@@ -61,7 +61,7 @@ Características de diseño:
 |---|---|
 | Backend | Java 21, Spring Boot 4.1.1 (Spring Framework 7, Hibernate 7, Jackson 3), Maven Wrapper, Spring Web MVC, Spring Data JPA, Spring Security + JWT (`jjwt`), Bean Validation, Actuator (solo `health`), `@Scheduled`, Flyway, Lombok, MapStruct, springdoc-openapi, Spotless |
 | Base de datos | PostgreSQL (instalado en el equipo, fuera de Docker) |
-| Frontend | Angular (standalone, signals, control flow), PrimeNG 21 (tema Aura, primary `noir`, surface `slate`, modo oscuro), Tailwind CSS + `tailwindcss-primeui`, PrimeIcons, `p-chart` (Chart.js), `@ngx-translate`, `date-fns`, ESLint + Prettier |
+| Frontend | Angular (standalone, signals, control flow), PrimeNG 22 (tema Aura, primary `noir`, surface `slate`, modo oscuro), Tailwind CSS + `tailwindcss-primeui`, PrimeIcons, `p-chart` (Chart.js), `@ngx-translate`, `date-fns`, ESLint + Prettier |
 | Infraestructura | Docker + Docker Compose: NGINX (sirve el SPA y hace *reverse proxy*) + Spring Boot |
 | Pruebas | JUnit 5, AssertJ, Mockito, Spring Boot Test (backend); Vitest (frontend). Casos compartidos en `docs/transaction-cases.json` |
 

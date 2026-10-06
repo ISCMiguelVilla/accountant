@@ -1,0 +1,9 @@
+# Production profile (Docker, local "production").
+# All secrets come from environment variables (.env, see .env.example).
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://host.docker.internal:5432/accountant}
+
+logging:
+  level:
+    root: INFO
