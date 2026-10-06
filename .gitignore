@@ -1,0 +1,95 @@
+# =====================================================================
+# Accountant — .gitignore unificado (monorepo: backend + frontend)
+# =====================================================================
+
+# ---------------------------------------------------------------------
+# Secretos y variables de entorno (nunca versionar)
+# ---------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.local.yml
+*.local.properties
+
+# ---------------------------------------------------------------------
+# Sistema operativo
+# ---------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------------------------------------------------------------------
+# IDEs y editores
+# ---------------------------------------------------------------------
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# Eclipse / STS
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache
+*.launch
+
+# NetBeans
+nbproject/private/
+nbbuild/
+nbdist/
+.nb-gradle/
+
+# VS Code (se conservan las configuraciones compartidas)
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/mcp.json
+.history/
+
+# Otros
+.c9/
+*.sublime-workspace
+
+# ---------------------------------------------------------------------
+# Logs
+# ---------------------------------------------------------------------
+*.log
+logs/
+
+# ---------------------------------------------------------------------
+# Backend (Spring Boot / Maven)
+# ---------------------------------------------------------------------
+backend/target/
+backend/build/
+backend/HELP.md
+backend/.mvn/wrapper/maven-wrapper.jar
+!backend/**/src/main/**/target/
+!backend/**/src/test/**/target/
+!backend/**/src/main/**/build/
+!backend/**/src/test/**/build/
+
+# ---------------------------------------------------------------------
+# Frontend (Angular)
+# ---------------------------------------------------------------------
+frontend/node_modules/
+frontend/dist/
+frontend/tmp/
+frontend/out-tsc/
+frontend/bazel-out/
+frontend/.angular/cache/
+frontend/coverage/
+frontend/typings/
+frontend/connect.lock
+frontend/libpeerconnection.log
+frontend/testem.log
+frontend/__screenshots__/
+.sass-cache/
+npm-debug.log*
+yarn-error.log*

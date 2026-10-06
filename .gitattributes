@@ -1,0 +1,16 @@
+# Normalización de fin de línea
+* text=auto
+
+# Scripts de shell siempre con LF (se ejecutan dentro de Docker / Linux)
+backend/mvnw text eol=lf
+*.sh text eol=lf
+
+# Scripts de Windows con CRLF
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binarios
+*.ico binary
+*.png binary
+*.jpg binary
+*.jar binary
