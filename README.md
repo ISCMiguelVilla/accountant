@@ -2,7 +2,7 @@
 
 Aplicación web de **finanzas personales**, multiusuario y de uso doméstico, pensada para ejecutarse **en local** (en tu propio equipo o en tu red de casa). Permite registrar cuentas (bancos, efectivo, tarjetas de crédito, inversiones, préstamos…) y los movimientos de dinero entre ellas, y a partir de eso muestra cuánto tienes, cuánto debes, cuánto ganas, cuánto gastas y si vas cumpliendo tu meta de ahorro anual.
 
-> **Estado del proyecto:** en construcción. Este README describe el sistema completo tal como está especificado en [`docs/PROMPT-accountant-v2.md`](docs/PROMPT-accountant-v2.md), que es la especificación de referencia. La implementación avanza por fases (ver [Hoja de ruta](#14-hoja-de-ruta-fases)). Actualmente el repositorio contiene la estructura base del backend (Spring Boot) y del frontend (Angular).
+> **Estado del proyecto:** en construcción. Este README describe el sistema completo tal como está especificado en [`docs/PROMPT-accountant-v2.md`](docs/PROMPT-accountant-v2.md), que es la especificación de referencia. La implementación avanza por fases (ver [Hoja de ruta](#14-hoja-de-ruta-fases)). **Fase 1 (andamiaje) completada:** dependencias, perfiles `dev`/`prod`, esquema Flyway V1, manejo de errores `ProblemDetail`, seguridad base, tema PrimeNG, i18n ES/EN, layout y Spotless/ESLint/Prettier. Las pantallas funcionales llegan en las siguientes fases.
 
 ---
 
@@ -61,7 +61,7 @@ Características de diseño:
 |---|---|
 | Backend | Java 21, Spring Boot 4.1.1 (Spring Framework 7, Hibernate 7, Jackson 3), Maven Wrapper, Spring Web MVC, Spring Data JPA, Spring Security + JWT (`jjwt`), Bean Validation, Actuator (solo `health`), `@Scheduled`, Flyway, Lombok, MapStruct, springdoc-openapi, Spotless |
 | Base de datos | PostgreSQL (instalado en el equipo, fuera de Docker) |
-| Frontend | Angular (standalone, signals, control flow), PrimeNG 22 (tema Aura, primary `noir`, surface `slate`, modo oscuro), Tailwind CSS + `tailwindcss-primeui`, PrimeIcons, `p-chart` (Chart.js), `@ngx-translate`, `date-fns`, ESLint + Prettier |
+| Frontend | Angular 21 (standalone, signals, control flow), PrimeNG 21 (tema Aura, primary `noir`, surface `slate`, modo oscuro), Tailwind CSS + `tailwindcss-primeui`, PrimeIcons, `p-chart` (Chart.js), `@ngx-translate`, `date-fns`, ESLint + Prettier |
 | Infraestructura | Docker + Docker Compose: NGINX (sirve el SPA y hace *reverse proxy*) + Spring Boot |
 | Pruebas | JUnit 5, AssertJ, Mockito, Spring Boot Test (backend); Vitest (frontend). Casos compartidos en `docs/transaction-cases.json` |
 
@@ -135,9 +135,9 @@ En Docker las variables se leen de un archivo `.env` (no versionado) basado en `
 
 ### 6.1 Prerrequisitos
 
-- **Java 21** (JDK)
-- **Node.js** LTS + npm
-- **PostgreSQL** instalado localmente
+- **Java 21** (JDK). `JAVA_HOME` debe apuntar al JDK 21 (Maven Wrapper lo usa); con Java 8 el build falla.
+- **Node.js** `^20.19 || ^22.12 || >=24` + npm (probado con Node 24)
+- **PostgreSQL** instalado localmente y en ejecución (probado con PostgreSQL 18)
 - (Opcional) **Docker Desktop** para la versión productiva local
 
 ### 6.2 Base de datos
@@ -147,7 +147,9 @@ CREATE DATABASE accountant_dev;   -- desarrollo
 CREATE DATABASE accountant;       -- producción local (Docker)
 ```
 
-Flyway crea las tablas al arrancar el backend (`V1__init_schema.sql`, `V2__seed_currencies.sql` y, en dev, `R__dev_seed.sql` con un usuario y cuentas de ejemplo).
+Flyway crea las tablas al arrancar el backend (`V1__init_schema.sql`, `V2__seed_currencies.sql` y, en dev, `db/seed-dev/R__dev_seed.sql` con un usuario y cuentas de ejemplo, que se agrega en la fase 3).
+
+En dev, si no defines variables, el backend usa `postgres`/`postgres` en `localhost:5432/accountant_dev`. Para otras credenciales exporta `DB_USERNAME` y `DB_PASSWORD` (y opcionalmente `DB_URL`, `JWT_SECRET`, `SHOW_SQL=true`).
 
 ### 6.3 Desarrollo
 
@@ -170,7 +172,7 @@ npm start
 
 Abrir `http://localhost:4200`. El **primer usuario** que se registre será el administrador.
 
-Pruebas y formato:
+Pruebas, formato y lint del backend (`verify` falla si el código no cumple el formato de Spotless; `spotless:apply` lo corrige):
 
 ```bash
 cd backend
@@ -178,8 +180,25 @@ cd backend
 ```
 
 ```bash
+cd backend
+./mvnw spotless:apply
+```
+
+Pruebas, lint y formato del frontend (Vitest, ESLint con `angular-eslint`, Prettier):
+
+```bash
 cd frontend
 npm test
+```
+
+```bash
+cd frontend
+npm run lint
+```
+
+```bash
+cd frontend
+npm run format
 ```
 
 ### 6.4 "Producción" local con Docker

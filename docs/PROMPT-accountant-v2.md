@@ -33,8 +33,8 @@ Reglas de trabajo:
 - Pruebas: JUnit 5, AssertJ, Mockito, Spring Boot Test. **Sin Testcontainers.**
 
 ### Frontend
-- **Angular** (versión compatible con PrimeNG 22), componentes **standalone**, control flow (`@if`, `@for`), **signals** para estado, `inject()`, formularios reactivos tipados.
-- **PrimeNG v22**, tema **Aura** con preset personalizado: **Primary = `noir`**, **Surface = `slate`** (con soporte de modo oscuro).
+- **Angular** (versión compatible con PrimeNG 21; se usa Angular 21), componentes **standalone**, control flow (`@if`, `@for`), **signals** para estado, `inject()`, formularios reactivos tipados.
+- **PrimeNG v21** (licencia MIT; la v22 requiere clave de licencia PrimeUI), tema **Aura** con preset personalizado: **Primary = `noir`**, **Surface = `slate`** (con soporte de modo oscuro).
 - **Tailwind CSS** + plugin `tailwindcss-primeui`.
 - **PrimeIcons**.
 - Gráficos con **PrimeNG `p-chart`** (Chart.js).

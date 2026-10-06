@@ -93,3 +93,6 @@ frontend/__screenshots__/
 .sass-cache/
 npm-debug.log*
 yarn-error.log*
+
+# Claude Code (configuración local)
+.claude/
