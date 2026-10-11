@@ -1,5 +1,6 @@
 package com.devs.accountant.account;
 
+import jakarta.persistence.LockModeType;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -9,6 +10,7 @@ import java.util.Set;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -66,6 +68,27 @@ public interface AccountRepository extends JpaRepository<Account, Long>, JpaSpec
                     GROUP BY account_id
                     """, nativeQuery = true)
     List<LastOperation> findLastOperationDates(@Param("userId") Long userId);
+
+    /** Same, restricted to the given accounts (date restriction of a batch). */
+    @Query(value = """
+                    SELECT account_id AS accountId, MAX(operation_date) AS lastOperationDate FROM (
+                        SELECT origin_account_id AS account_id, operation_date FROM transactions
+                        WHERE origin_account_id IN (:ids)
+                        UNION ALL
+                        SELECT destination_account_id, operation_date FROM transactions
+                        WHERE destination_account_id IN (:ids)
+                    ) t
+                    GROUP BY account_id
+                    """, nativeQuery = true)
+    List<LastOperation> findLastOperationDatesOf(@Param("ids") Collection<Long> ids);
+
+    /**
+     * Locks the user's accounts for the rest of the database transaction ({@code SELECT ... FOR UPDATE}), always in id
+     * order so concurrent batches cannot deadlock.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select a from Account a where a.userId = :userId and a.id in :ids order by a.id")
+    List<Account> lockForUpdate(@Param("userId") Long userId, @Param("ids") Collection<Long> ids);
 
     interface LastOperation {
         Long getAccountId();

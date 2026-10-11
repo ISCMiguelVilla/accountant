@@ -2,7 +2,7 @@
 
 Aplicación web de **finanzas personales**, multiusuario y de uso doméstico, pensada para ejecutarse **en local** (en tu propio equipo o en tu red de casa). Permite registrar cuentas (bancos, efectivo, tarjetas de crédito, inversiones, préstamos…) y los movimientos de dinero entre ellas, y a partir de eso muestra cuánto tienes, cuánto debes, cuánto ganas, cuánto gastas y si vas cumpliendo tu meta de ahorro anual.
 
-> **Estado del proyecto:** en construcción. Este README describe el sistema completo tal como está especificado en [`docs/PROMPT-accountant-v2.md`](docs/PROMPT-accountant-v2.md), que es la especificación de referencia. La implementación avanza por fases (ver [Hoja de ruta](#14-hoja-de-ruta-fases)). **Fases completadas:** 1 (andamiaje: perfiles, Flyway V1, errores `ProblemDetail`, tema PrimeNG, i18n ES/EN, layout, Spotless/ESLint/Prettier) 2 (autenticación JWT con único administrador, administración de usuarios y monedas, paginado/filtros/orden genéricos y tablas sincronizadas con la URL) y 3 (cuentas con jerarquía y validación de ciclos, edición manual de saldo, borrado lógico, líneas de crédito con fechas de corte/pago calculadas por cron y job diario, semilla de desarrollo). Las transacciones y los reportes llegan en las siguientes fases.
+> **Estado del proyecto:** en construcción. Este README describe el sistema completo tal como está especificado en [`docs/PROMPT-accountant-v2.md`](docs/PROMPT-accountant-v2.md), que es la especificación de referencia. La implementación avanza por fases (ver [Hoja de ruta](#14-hoja-de-ruta-fases)). **Fases completadas:** 1 (andamiaje: perfiles, Flyway V1, errores `ProblemDetail`, tema PrimeNG, i18n ES/EN, layout, Spotless/ESLint/Prettier) 2 (autenticación JWT con único administrador, administración de usuarios y monedas, paginado/filtros/orden genéricos y tablas sincronizadas con la URL) 3 (cuentas con jerarquía y validación de ciclos, edición manual de saldo, borrado lógico, líneas de crédito con fechas de corte/pago calculadas por cron y job diario, semilla de desarrollo) y 4 (motor de transacciones del backend: reglas, lote atómico con bloqueo pesimista, aplicación de pendientes, cuentas temporales, gasto por reconocer y monto reportado, probado con los casos compartidos de `docs/transaction-cases.json`; el detalle está en [`docs/business-rules.md`](docs/business-rules.md)). El editor de lotes y los reportes llegan en las siguientes fases.
 
 ---
 
@@ -90,8 +90,8 @@ accountant/
 ├── docker/                   # Dockerfiles y configuración de NGINX (fase 9)
 ├── docs/
 │   ├── PROMPT-accountant-v2.md   # especificación completa del sistema
-│   ├── business-rules.md         # reglas de negocio (fase 4)
-│   └── transaction-cases.json    # casos de prueba compartidos back/front (fase 4)
+│   ├── business-rules.md         # reglas del motor de transacciones (prosa + tablas)
+│   └── transaction-cases.json    # casos de prueba compartidos back/front
 ├── docker-compose.yml        # (fase 9)
 ├── .env.example              # (fase 9)
 ├── .gitignore                # único .gitignore para todo el monorepo
