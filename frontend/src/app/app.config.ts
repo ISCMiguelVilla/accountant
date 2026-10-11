@@ -1,6 +1,6 @@
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
-import { provideRouter, withComponentInputBinding } from '@angular/router';
+import { provideRouter, withComponentInputBinding, withRouterConfig } from '@angular/router';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { providePrimeNG } from 'primeng/config';
 import { routes } from './app.routes';
@@ -12,7 +12,12 @@ import { AccountantPreset, DARK_MODE_CLASS } from './core/theme/accountant-prese
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideRouter(routes, withComponentInputBinding()),
+    provideRouter(
+      routes,
+      withComponentInputBinding(),
+      // Child routes (e.g. accounts/:id/edit) receive the parent params as inputs.
+      withRouterConfig({ paramsInheritanceStrategy: 'always' }),
+    ),
     // Order matters: the auth interceptor sees the response first (401 → sign-in).
     provideHttpClient(withFetch(), withInterceptors([errorInterceptor, authInterceptor])),
     providePrimeNG({

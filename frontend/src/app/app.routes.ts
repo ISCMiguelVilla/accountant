@@ -19,6 +19,12 @@ export const routes: Routes = [
         loadChildren: () => import('./features/home/home.routes').then((m) => m.HOME_ROUTES),
       },
       {
+        path: 'accounts',
+        data: { [BREADCRUMB]: 'menu.accounts' },
+        loadChildren: () =>
+          import('./features/accounts/accounts.routes').then((m) => m.ACCOUNTS_ROUTES),
+      },
+      {
         path: 'admin',
         canActivate: [adminGuard],
         data: { [BREADCRUMB]: 'menu.admin' },

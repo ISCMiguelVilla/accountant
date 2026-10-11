@@ -11,7 +11,8 @@
     "home": "Home",
     "admin": "Administration",
     "users": "Users",
-    "currencies": "Currencies"
+    "currencies": "Currencies",
+    "accounts": "Accounts"
   },
   "layout": {
     "toggleMenu": "Show menu",
@@ -34,7 +35,11 @@
     "empty": "No results.",
     "clearFilters": "Clear filters",
     "selectedMany": "Several selected",
-    "pageReport": "{first} – {last} of {totalRecords}"
+    "pageReport": "{first} – {last} of {totalRecords}",
+    "delete": "Delete",
+    "yes": "Yes",
+    "no": "No",
+    "loading": "Loading…"
   },
   "home": {
     "title": "Home",
@@ -59,7 +64,9 @@
     "BAD_CREDENTIALS": "Wrong username or password.",
     "FORBIDDEN": "You are not allowed to perform this action.",
     "INTERNAL_SERVER_ERROR": "An unexpected error occurred.",
-    "NETWORK_ERROR": "Could not reach the server."
+    "NETWORK_ERROR": "Could not reach the server.",
+    "ACCOUNT_NOT_DELETABLE_BALANCE": "It cannot be deleted: the account balance is not 0.",
+    "ACCOUNT_NOT_DELETABLE_CHILDREN": "It cannot be deleted: the account has sub-accounts."
   },
   "auth": {
     "name": "Name",
@@ -113,6 +120,21 @@
     "currencyStatus": {
       "ACTIVE": "Active",
       "DISABLED": "Disabled"
+    },
+    "accountType": {
+      "GROUP": "Group",
+      "SUPPLIER": "Income source",
+      "STORAGE": "Storage",
+      "CONSUMER": "Expense",
+      "BUSINESS": "Business",
+      "INVESTMENT": "Investment",
+      "CREDITOR": "Receivable",
+      "DEBTOR": "Payable"
+    },
+    "accountStatus": {
+      "ACTIVE": "Active",
+      "DISABLED": "Disabled",
+      "DELETED": "Deleted"
     }
   },
   "validation": {
@@ -129,8 +151,82 @@
       "typeMismatch": "The value is not valid.",
       "USERNAME_TAKEN": "That username already exists.",
       "DUPLICATED": "A record with this value already exists.",
-      "INVALID_QUERY_PARAMETER": "Invalid query parameter."
+      "INVALID_QUERY_PARAMETER": "Invalid query parameter.",
+      "INVALID_PARENT": "That account cannot be the parent of this type.",
+      "PARENT_CYCLE": "The parent cannot be the account itself or one of its sub-accounts.",
+      "TYPE_CHANGE_NOT_ALLOWED": "The type cannot change: the account has sub-accounts or transactions.",
+      "CREDIT_REQUIRES_DEBTOR": "An account with a credit line must be Payable.",
+      "TEMPORARY_NOT_ALLOWED": "Only Investment or Business accounts can be temporary.",
+      "CURRENCY_NOT_AVAILABLE": "The currency is not available.",
+      "INVALID_STATUS": "Invalid status.",
+      "INVALID_CRON": "The cron expression is not valid.",
+      "PositiveOrZero": "Must be greater than or equal to 0.",
+      "Positive": "Must be greater than 0.",
+      "Digits": "At most 2 decimals."
+    },
+    "min": "The minimum value is {{min}}."
+  },
+  "accounts": {
+    "title": "Accounts",
+    "new": "New account",
+    "edit": "Edit account",
+    "detail": "Detail",
+    "search": "Search by name",
+    "type": "Type",
+    "parent": "Parent account",
+    "noParent": "No parent account",
+    "currency": "Currency",
+    "balance": "Balance",
+    "pendingExpense": "Expense to recognize",
+    "pendingExpenseHelp": "Part of the debt that is consumption; it is reported as expense when paid. It cannot exceed the balance.",
+    "icon": "Icon",
+    "iconPlaceholder": "Type icon",
+    "color": "Color",
+    "includeInBalance": "Include in balance",
+    "temporary": "Temporary account",
+    "temporaryHelp": "It is disabled automatically when its PROFIT (withdrawal) is recorded.",
+    "typeLocked": "It has sub-accounts, transactions or a credit line: only Storage ↔ Investment changes are allowed.",
+    "balanceOverwriteWarning": "This account has transactions: the new balance overwrites the current one without creating a transaction.",
+    "saved": "Account saved.",
+    "deleted": "Account deleted.",
+    "deleteTitle": "Delete account",
+    "deleteConfirm": "Delete the account \"{{name}}\"? Only possible with a zero balance and no sub-accounts.",
+    "subAccounts": "Sub-accounts",
+    "noSubAccounts": "This account has no sub-accounts.",
+    "lastTransactions": "Latest transactions",
+    "noTransactionsYet": "The transactions of this account will appear here.",
+    "backToList": "Back to accounts",
+    "credit": {
+      "title": "Credit line",
+      "enabled": "Has a credit line",
+      "limit": "Credit limit",
+      "used": "Credit usage",
+      "available": "Available credit",
+      "cutOff": "Cut-off date",
+      "paymentDue": "Payment due date",
+      "cutOffDay": "Next cut-off",
+      "paymentDueDay": "Next payment due"
+    },
+    "typeHelp": {
+      "GROUP": "Groups other accounts; never used in transactions.",
+      "SUPPLIER": "Income source: employer, client.",
+      "STORAGE": "Where you keep money: bank, cash.",
+      "CONSUMER": "Expense concept: food, home, transport.",
+      "BUSINESS": "Your own business.",
+      "INVESTMENT": "Investment: bonds, funds, deposits.",
+      "CREDITOR": "Money you lent (you are owed).",
+      "DEBTOR": "Money you owe: credit card, loan."
     }
+  },
+  "cron": {
+    "mode": {
+      "day": "Day of month",
+      "last": "Last day",
+      "advanced": "Advanced"
+    },
+    "dayOfMonth": "Day",
+    "advancedHint": "Spring cron expression (6 fields): second minute hour day month weekday.",
+    "next": "Next dates"
   },
   "primeng": {
     "startsWith": "Starts with",

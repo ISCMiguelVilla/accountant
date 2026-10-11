@@ -2,7 +2,7 @@
 
 Aplicación web de **finanzas personales**, multiusuario y de uso doméstico, pensada para ejecutarse **en local** (en tu propio equipo o en tu red de casa). Permite registrar cuentas (bancos, efectivo, tarjetas de crédito, inversiones, préstamos…) y los movimientos de dinero entre ellas, y a partir de eso muestra cuánto tienes, cuánto debes, cuánto ganas, cuánto gastas y si vas cumpliendo tu meta de ahorro anual.
 
-> **Estado del proyecto:** en construcción. Este README describe el sistema completo tal como está especificado en [`docs/PROMPT-accountant-v2.md`](docs/PROMPT-accountant-v2.md), que es la especificación de referencia. La implementación avanza por fases (ver [Hoja de ruta](#14-hoja-de-ruta-fases)). **Fases completadas:** 1 (andamiaje: perfiles, Flyway V1, errores `ProblemDetail`, tema PrimeNG, i18n ES/EN, layout, Spotless/ESLint/Prettier) y 2 (autenticación JWT con único administrador, administración de usuarios y monedas, paginado/filtros/orden genéricos y tablas sincronizadas con la URL). Las pantallas de cuentas, transacciones y reportes llegan en las siguientes fases.
+> **Estado del proyecto:** en construcción. Este README describe el sistema completo tal como está especificado en [`docs/PROMPT-accountant-v2.md`](docs/PROMPT-accountant-v2.md), que es la especificación de referencia. La implementación avanza por fases (ver [Hoja de ruta](#14-hoja-de-ruta-fases)). **Fases completadas:** 1 (andamiaje: perfiles, Flyway V1, errores `ProblemDetail`, tema PrimeNG, i18n ES/EN, layout, Spotless/ESLint/Prettier) 2 (autenticación JWT con único administrador, administración de usuarios y monedas, paginado/filtros/orden genéricos y tablas sincronizadas con la URL) y 3 (cuentas con jerarquía y validación de ciclos, edición manual de saldo, borrado lógico, líneas de crédito con fechas de corte/pago calculadas por cron y job diario, semilla de desarrollo). Las transacciones y los reportes llegan en las siguientes fases.
 
 ---
 
@@ -147,7 +147,9 @@ CREATE DATABASE accountant_dev;   -- desarrollo
 CREATE DATABASE accountant;       -- producción local (Docker)
 ```
 
-Flyway crea las tablas al arrancar el backend (`V1__init_schema.sql`, `V2__seed_currencies.sql` y, en dev, `db/seed-dev/R__dev_seed.sql` con un usuario y cuentas de ejemplo, que se agrega en la fase 3).
+Flyway crea las tablas al arrancar el backend (`V1__init_schema.sql`, `V2__seed_currencies.sql` y, en dev, `db/seed-dev/R__dev_seed.sql` con un usuario y cuentas de ejemplo).
+
+**Usuario de prueba (solo perfil `dev`):** `demo` / `demo12345`. Tiene rol USER, así que el primer usuario que se registre sigue siendo el administrador. Incluye una cuenta de cada tipo, una tarjeta (Por pagar) con línea de crédito y una inversión temporal. La semilla no hace nada si el usuario `demo` ya existe.
 
 En dev, si no defines variables, el backend usa `postgres`/`postgres` en `localhost:5432/accountant_dev`. Para otras credenciales copia `backend/application-local.yml.example` a `backend/application-local.yml` (ignorado por git) o exporta `DB_USERNAME` y `DB_PASSWORD` (y opcionalmente `DB_URL`, `JWT_SECRET`, `SHOW_SQL=true`).
 

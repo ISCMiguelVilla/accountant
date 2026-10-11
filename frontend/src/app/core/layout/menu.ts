@@ -15,7 +15,10 @@ export interface AppMenuSection {
 /** Main navigation. Each feature adds its entry when it is implemented. */
 export const APP_MENU: AppMenuSection[] = [
   {
-    items: [{ label: 'menu.home', icon: 'pi pi-home', route: '/home' }],
+    items: [
+      { label: 'menu.home', icon: 'pi pi-home', route: '/home' },
+      { label: 'menu.accounts', icon: 'pi pi-wallet', route: '/accounts' },
+    ],
   },
   {
     title: 'menu.admin',

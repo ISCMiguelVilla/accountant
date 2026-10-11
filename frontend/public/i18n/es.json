@@ -11,7 +11,8 @@
     "home": "Inicio",
     "admin": "Administración",
     "users": "Usuarios",
-    "currencies": "Monedas"
+    "currencies": "Monedas",
+    "accounts": "Cuentas"
   },
   "layout": {
     "toggleMenu": "Mostrar menú",
@@ -34,7 +35,11 @@
     "empty": "No hay resultados.",
     "clearFilters": "Limpiar filtros",
     "selectedMany": "Varios seleccionados",
-    "pageReport": "{first} – {last} de {totalRecords}"
+    "pageReport": "{first} – {last} de {totalRecords}",
+    "delete": "Eliminar",
+    "yes": "Sí",
+    "no": "No",
+    "loading": "Cargando…"
   },
   "home": {
     "title": "Inicio",
@@ -59,7 +64,9 @@
     "BAD_CREDENTIALS": "Usuario o contraseña incorrectos.",
     "FORBIDDEN": "No tienes permiso para realizar esta acción.",
     "INTERNAL_SERVER_ERROR": "Ocurrió un error inesperado.",
-    "NETWORK_ERROR": "No se pudo conectar con el servidor."
+    "NETWORK_ERROR": "No se pudo conectar con el servidor.",
+    "ACCOUNT_NOT_DELETABLE_BALANCE": "No se puede eliminar: el saldo de la cuenta no es 0.",
+    "ACCOUNT_NOT_DELETABLE_CHILDREN": "No se puede eliminar: la cuenta tiene sub-cuentas."
   },
   "auth": {
     "name": "Nombre",
@@ -113,6 +120,21 @@
     "currencyStatus": {
       "ACTIVE": "Activa",
       "DISABLED": "Deshabilitada"
+    },
+    "accountType": {
+      "GROUP": "Grupo",
+      "SUPPLIER": "Proveedor de ingresos",
+      "STORAGE": "Almacén",
+      "CONSUMER": "Consumo",
+      "BUSINESS": "Negocio",
+      "INVESTMENT": "Inversión",
+      "CREDITOR": "Por cobrar",
+      "DEBTOR": "Por pagar"
+    },
+    "accountStatus": {
+      "ACTIVE": "Activa",
+      "DISABLED": "Deshabilitada",
+      "DELETED": "Eliminada"
     }
   },
   "validation": {
@@ -129,8 +151,82 @@
       "typeMismatch": "El valor no es válido.",
       "USERNAME_TAKEN": "Ese usuario ya existe.",
       "DUPLICATED": "Ya existe un registro con este valor.",
-      "INVALID_QUERY_PARAMETER": "Parámetro de consulta no válido."
+      "INVALID_QUERY_PARAMETER": "Parámetro de consulta no válido.",
+      "INVALID_PARENT": "Esa cuenta no puede ser la cuenta padre de este tipo.",
+      "PARENT_CYCLE": "La cuenta padre no puede ser la misma cuenta ni una de sus sub-cuentas.",
+      "TYPE_CHANGE_NOT_ALLOWED": "No se puede cambiar el tipo: la cuenta tiene sub-cuentas o transacciones.",
+      "CREDIT_REQUIRES_DEBTOR": "Una cuenta con línea de crédito debe ser de tipo Por pagar.",
+      "TEMPORARY_NOT_ALLOWED": "Solo las cuentas de Inversión o Negocio pueden ser temporales.",
+      "CURRENCY_NOT_AVAILABLE": "La moneda no está disponible.",
+      "INVALID_STATUS": "Estado no válido.",
+      "INVALID_CRON": "La expresión cron no es válida.",
+      "PositiveOrZero": "Debe ser mayor o igual a 0.",
+      "Positive": "Debe ser mayor a 0.",
+      "Digits": "Máximo 2 decimales."
+    },
+    "min": "El valor mínimo es {{min}}."
+  },
+  "accounts": {
+    "title": "Cuentas",
+    "new": "Nueva cuenta",
+    "edit": "Editar cuenta",
+    "detail": "Detalle",
+    "search": "Buscar por nombre",
+    "type": "Tipo",
+    "parent": "Cuenta padre",
+    "noParent": "Sin cuenta padre",
+    "currency": "Moneda",
+    "balance": "Saldo",
+    "pendingExpense": "Gasto por reconocer",
+    "pendingExpenseHelp": "Parte de la deuda que es consumo; se reportará como gasto cuando se pague. No puede superar el saldo.",
+    "icon": "Ícono",
+    "iconPlaceholder": "Ícono del tipo",
+    "color": "Color",
+    "includeInBalance": "Incluir en el balance",
+    "temporary": "Cuenta temporal",
+    "temporaryHelp": "Se deshabilita automáticamente cuando se registra su retiro de utilidades (PROFIT).",
+    "typeLocked": "Tiene sub-cuentas, transacciones o línea de crédito: solo se permite cambiar entre Almacén e Inversión.",
+    "balanceOverwriteWarning": "Esta cuenta tiene transacciones: el nuevo saldo sobrescribe el actual sin generar una transacción.",
+    "saved": "Cuenta guardada.",
+    "deleted": "Cuenta eliminada.",
+    "deleteTitle": "Eliminar cuenta",
+    "deleteConfirm": "¿Eliminar la cuenta \"{{name}}\"? Solo se puede si su saldo es 0 y no tiene sub-cuentas.",
+    "subAccounts": "Sub-cuentas",
+    "noSubAccounts": "Esta cuenta no tiene sub-cuentas.",
+    "lastTransactions": "Últimas transacciones",
+    "noTransactionsYet": "Aquí aparecerán las transacciones de esta cuenta.",
+    "backToList": "Volver a cuentas",
+    "credit": {
+      "title": "Línea de crédito",
+      "enabled": "Tiene línea de crédito",
+      "limit": "Límite de crédito",
+      "used": "Uso de la línea",
+      "available": "Crédito disponible",
+      "cutOff": "Fecha de corte",
+      "paymentDue": "Fecha límite de pago",
+      "cutOffDay": "Próximo corte",
+      "paymentDueDay": "Próximo pago"
+    },
+    "typeHelp": {
+      "GROUP": "Agrupa otras cuentas; no participa en transacciones.",
+      "SUPPLIER": "Fuente de ingresos: empleador, cliente.",
+      "STORAGE": "Donde guardas dinero: banco, efectivo.",
+      "CONSUMER": "Concepto de gasto: comida, casa, transporte.",
+      "BUSINESS": "Negocio propio.",
+      "INVESTMENT": "Inversión: CETES, fondos, plazo fijo.",
+      "CREDITOR": "Dinero que prestaste (te deben).",
+      "DEBTOR": "Dinero que debes: tarjeta de crédito, préstamo."
     }
+  },
+  "cron": {
+    "mode": {
+      "day": "Día del mes",
+      "last": "Último día",
+      "advanced": "Avanzado"
+    },
+    "dayOfMonth": "Día",
+    "advancedHint": "Expresión cron de Spring (6 campos): segundo minuto hora día mes día-semana.",
+    "next": "Próximas fechas"
   },
   "primeng": {
     "startsWith": "Comienza con",
