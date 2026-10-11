@@ -1,6 +1,10 @@
 # Development profile — default values ONLY for local development.
 # Never put real passwords here; override them with environment variables.
 spring:
+  # Optional, git-ignored overrides (e.g. DB password); see application-local.yml.example.
+  # Imported values take precedence over this file.
+  config:
+    import: optional:file:./application-local.yml
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/accountant_dev}
     username: ${DB_USERNAME:postgres}

@@ -1,0 +1,6 @@
+# Copy to application-local.yml (git-ignored) to override local settings
+# without environment variables. Read from the backend working directory.
+spring:
+  datasource:
+    username: postgres
+    password: change-me

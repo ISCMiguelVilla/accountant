@@ -149,7 +149,7 @@ CREATE DATABASE accountant;       -- producción local (Docker)
 
 Flyway crea las tablas al arrancar el backend (`V1__init_schema.sql`, `V2__seed_currencies.sql` y, en dev, `db/seed-dev/R__dev_seed.sql` con un usuario y cuentas de ejemplo, que se agrega en la fase 3).
 
-En dev, si no defines variables, el backend usa `postgres`/`postgres` en `localhost:5432/accountant_dev`. Para otras credenciales exporta `DB_USERNAME` y `DB_PASSWORD` (y opcionalmente `DB_URL`, `JWT_SECRET`, `SHOW_SQL=true`).
+En dev, si no defines variables, el backend usa `postgres`/`postgres` en `localhost:5432/accountant_dev`. Para otras credenciales copia `backend/application-local.yml.example` a `backend/application-local.yml` (ignorado por git) o exporta `DB_USERNAME` y `DB_PASSWORD` (y opcionalmente `DB_URL`, `JWT_SECRET`, `SHOW_SQL=true`).
 
 ### 6.3 Desarrollo
 
