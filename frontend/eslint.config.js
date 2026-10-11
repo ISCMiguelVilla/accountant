@@ -26,7 +26,10 @@ module.exports = tseslint.config(
         'error',
         { suffixes: ['Component', 'Page', 'App'] },
       ],
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', ignoreRestSiblings: true },
+      ],
     },
   },
   {

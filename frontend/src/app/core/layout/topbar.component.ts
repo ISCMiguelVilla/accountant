@@ -1,16 +1,24 @@
-import { ChangeDetectionStrategy, Component, inject, output } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { TranslatePipe } from '@ngx-translate/core';
+import { ChangeDetectionStrategy, Component, computed, inject, output } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { MenuItem } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
-import { SelectModule } from 'primeng/select';
-import { TooltipModule } from 'primeng/tooltip';
-import { LANGUAGES, Language } from '../i18n/language';
-import { LanguageService } from '../i18n/language.service';
-import { ThemeService } from '../theme/theme.service';
+import { MenuModule } from 'primeng/menu';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { AuthService } from '../auth/auth.service';
+import { LanguageSwitcherComponent } from './language-switcher.component';
+import { ThemeToggleComponent } from './theme-toggle.component';
 
 @Component({
   selector: 'app-topbar',
-  imports: [FormsModule, TranslatePipe, ButtonModule, SelectModule, TooltipModule],
+  imports: [
+    RouterLink,
+    TranslatePipe,
+    ButtonModule,
+    MenuModule,
+    LanguageSwitcherComponent,
+    ThemeToggleComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header
@@ -25,54 +33,63 @@ import { ThemeService } from '../theme/theme.service';
         [ariaLabel]="'layout.toggleMenu' | translate"
         (onClick)="toggleMenu.emit()"
       />
-      <a href="/" class="flex items-center gap-2 text-color no-underline">
+      <a routerLink="/home" class="flex items-center gap-2 text-color no-underline">
         <i class="pi pi-wallet text-xl"></i>
         <span class="text-lg font-semibold">{{ 'app.name' | translate }}</span>
       </a>
 
       <div class="ml-auto flex items-center gap-2">
-        <p-select
-          [options]="languageOptions"
-          [ngModel]="language.language()"
-          (ngModelChange)="changeLanguage($event)"
-          optionLabel="label"
-          optionValue="value"
-          size="small"
-          [ariaLabel]="'layout.language' | translate"
-        >
-          <ng-template #selectedItem let-option>
-            <span>{{ option.label | translate }}</span>
-          </ng-template>
-          <ng-template #item let-option>
-            <span>{{ option.label | translate }}</span>
-          </ng-template>
-        </p-select>
-        <p-button
-          [icon]="theme.darkMode() ? 'pi pi-sun' : 'pi pi-moon'"
-          [text]="true"
-          [rounded]="true"
-          severity="secondary"
-          [pTooltip]="(theme.darkMode() ? 'layout.lightMode' : 'layout.darkMode') | translate"
-          tooltipPosition="bottom"
-          [ariaLabel]="(theme.darkMode() ? 'layout.lightMode' : 'layout.darkMode') | translate"
-          (onClick)="theme.toggle()"
-        />
+        <app-language-switcher />
+        <app-theme-toggle />
+        @if (auth.user(); as user) {
+          <p-button
+            icon="pi pi-user"
+            [label]="user.name"
+            [text]="true"
+            severity="secondary"
+            styleClass="hidden! sm:inline-flex!"
+            [ariaLabel]="'layout.userMenu' | translate"
+            (onClick)="menu.toggle($event)"
+          />
+          <p-button
+            class="sm:hidden"
+            icon="pi pi-user"
+            [text]="true"
+            [rounded]="true"
+            severity="secondary"
+            [ariaLabel]="'layout.userMenu' | translate"
+            (onClick)="menu.toggle($event)"
+          />
+          <p-menu #menu [model]="userMenu()" [popup]="true" appendTo="body" />
+        }
       </div>
     </header>
   `,
 })
 export class TopbarComponent {
-  protected readonly language = inject(LanguageService);
-  protected readonly theme = inject(ThemeService);
+  protected readonly auth = inject(AuthService);
+  private readonly translate = inject(TranslateService);
+  private readonly languageChange = toSignal(this.translate.onLangChange, { initialValue: null });
 
   readonly toggleMenu = output<void>();
 
-  protected readonly languageOptions = LANGUAGES.map((value) => ({
-    value,
-    label: `languages.${value}`,
-  }));
-
-  protected changeLanguage(language: Language): void {
-    this.language.use(language).subscribe();
-  }
+  protected readonly userMenu = computed<MenuItem[]>(() => {
+    this.languageChange();
+    const user = this.auth.user();
+    if (!user) {
+      return [];
+    }
+    return [
+      {
+        label: `${user.username} · ${this.translate.instant(`enums.role.${user.role}`)}`,
+        disabled: true,
+      },
+      { separator: true },
+      {
+        label: this.translate.instant('auth.signOut'),
+        icon: 'pi pi-sign-out',
+        command: () => this.auth.signOut(),
+      },
+    ];
+  });
 }

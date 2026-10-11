@@ -8,16 +8,33 @@
   },
   "menu": {
     "title": "Main menu",
-    "home": "Home"
+    "home": "Home",
+    "admin": "Administration",
+    "users": "Users",
+    "currencies": "Currencies"
   },
   "layout": {
     "toggleMenu": "Show menu",
     "language": "Language",
     "darkMode": "Dark mode",
-    "lightMode": "Light mode"
+    "lightMode": "Light mode",
+    "userMenu": "User menu"
   },
   "common": {
-    "comingSoon": "Under construction."
+    "comingSoon": "Under construction.",
+    "error": "Error",
+    "done": "Done",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "actions": "Actions",
+    "name": "Name",
+    "status": "Status",
+    "createdAt": "Created",
+    "empty": "No results.",
+    "clearFilters": "Clear filters",
+    "selectedMany": "Several selected",
+    "pageReport": "{first} – {last} of {totalRecords}"
   },
   "home": {
     "title": "Home",
@@ -43,6 +60,77 @@
     "FORBIDDEN": "You are not allowed to perform this action.",
     "INTERNAL_SERVER_ERROR": "An unexpected error occurred.",
     "NETWORK_ERROR": "Could not reach the server."
+  },
+  "auth": {
+    "name": "Name",
+    "username": "Username",
+    "usernameHint": "Letters, numbers, dot, hyphen or underscore.",
+    "password": "Password",
+    "confirmPassword": "Confirm password",
+    "signOut": "Sign out",
+    "signIn": {
+      "title": "Sign in",
+      "subtitle": "Welcome back to Accountant.",
+      "action": "Sign in",
+      "noAccount": "Don't have an account?"
+    },
+    "signUp": {
+      "title": "Create account",
+      "subtitle": "The first registered user becomes the administrator.",
+      "action": "Create account",
+      "haveAccount": "Already have an account?"
+    }
+  },
+  "admin": {
+    "users": {
+      "title": "Users",
+      "search": "Search by name or username",
+      "role": "Role",
+      "edit": "Edit user",
+      "saved": "User updated.",
+      "adminImmutable": "The administrator cannot be disabled."
+    },
+    "currencies": {
+      "title": "Currencies",
+      "search": "Search by name or ISO",
+      "new": "New currency",
+      "edit": "Edit currency",
+      "iso": "ISO",
+      "symbol": "Symbol",
+      "saved": "Currency saved.",
+      "illustrative": "The currency of an account is illustrative: it is shown next to the balance, with no conversions."
+    }
+  },
+  "enums": {
+    "role": {
+      "ADMIN": "Administrator",
+      "USER": "User"
+    },
+    "userStatus": {
+      "ACTIVE": "Active",
+      "DISABLED": "Disabled"
+    },
+    "currencyStatus": {
+      "ACTIVE": "Active",
+      "DISABLED": "Disabled"
+    }
+  },
+  "validation": {
+    "required": "This field is required.",
+    "minlength": "Must be at least {{requiredLength}} characters.",
+    "maxlength": "Must be at most {{requiredLength}} characters.",
+    "pattern": "The format is not valid.",
+    "mismatch": "Passwords do not match.",
+    "server": {
+      "NotBlank": "This field is required.",
+      "NotNull": "This field is required.",
+      "Size": "The length is not valid.",
+      "Pattern": "The format is not valid.",
+      "typeMismatch": "The value is not valid.",
+      "USERNAME_TAKEN": "That username already exists.",
+      "DUPLICATED": "A record with this value already exists.",
+      "INVALID_QUERY_PARAMETER": "Invalid query parameter."
+    }
   },
   "primeng": {
     "startsWith": "Starts with",

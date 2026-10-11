@@ -8,16 +8,33 @@
   },
   "menu": {
     "title": "Menú principal",
-    "home": "Inicio"
+    "home": "Inicio",
+    "admin": "Administración",
+    "users": "Usuarios",
+    "currencies": "Monedas"
   },
   "layout": {
     "toggleMenu": "Mostrar menú",
     "language": "Idioma",
     "darkMode": "Modo oscuro",
-    "lightMode": "Modo claro"
+    "lightMode": "Modo claro",
+    "userMenu": "Menú de usuario"
   },
   "common": {
-    "comingSoon": "En construcción."
+    "comingSoon": "En construcción.",
+    "error": "Error",
+    "done": "Listo",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "edit": "Editar",
+    "actions": "Acciones",
+    "name": "Nombre",
+    "status": "Estado",
+    "createdAt": "Creado",
+    "empty": "No hay resultados.",
+    "clearFilters": "Limpiar filtros",
+    "selectedMany": "Varios seleccionados",
+    "pageReport": "{first} – {last} de {totalRecords}"
   },
   "home": {
     "title": "Inicio",
@@ -43,6 +60,77 @@
     "FORBIDDEN": "No tienes permiso para realizar esta acción.",
     "INTERNAL_SERVER_ERROR": "Ocurrió un error inesperado.",
     "NETWORK_ERROR": "No se pudo conectar con el servidor."
+  },
+  "auth": {
+    "name": "Nombre",
+    "username": "Usuario",
+    "usernameHint": "Letras, números, punto, guion o guion bajo.",
+    "password": "Contraseña",
+    "confirmPassword": "Confirmar contraseña",
+    "signOut": "Cerrar sesión",
+    "signIn": {
+      "title": "Iniciar sesión",
+      "subtitle": "Bienvenido de nuevo a Accountant.",
+      "action": "Iniciar sesión",
+      "noAccount": "¿No tienes cuenta?"
+    },
+    "signUp": {
+      "title": "Crear cuenta",
+      "subtitle": "El primer usuario registrado será el administrador.",
+      "action": "Crear cuenta",
+      "haveAccount": "¿Ya tienes cuenta?"
+    }
+  },
+  "admin": {
+    "users": {
+      "title": "Usuarios",
+      "search": "Buscar por nombre o usuario",
+      "role": "Rol",
+      "edit": "Editar usuario",
+      "saved": "Usuario actualizado.",
+      "adminImmutable": "El administrador no se puede deshabilitar."
+    },
+    "currencies": {
+      "title": "Monedas",
+      "search": "Buscar por nombre o ISO",
+      "new": "Nueva moneda",
+      "edit": "Editar moneda",
+      "iso": "ISO",
+      "symbol": "Símbolo",
+      "saved": "Moneda guardada.",
+      "illustrative": "La moneda de una cuenta es ilustrativa: se muestra junto al saldo, sin conversiones."
+    }
+  },
+  "enums": {
+    "role": {
+      "ADMIN": "Administrador",
+      "USER": "Usuario"
+    },
+    "userStatus": {
+      "ACTIVE": "Activo",
+      "DISABLED": "Deshabilitado"
+    },
+    "currencyStatus": {
+      "ACTIVE": "Activa",
+      "DISABLED": "Deshabilitada"
+    }
+  },
+  "validation": {
+    "required": "Este campo es obligatorio.",
+    "minlength": "Debe tener al menos {{requiredLength}} caracteres.",
+    "maxlength": "Debe tener como máximo {{requiredLength}} caracteres.",
+    "pattern": "El formato no es válido.",
+    "mismatch": "Las contraseñas no coinciden.",
+    "server": {
+      "NotBlank": "Este campo es obligatorio.",
+      "NotNull": "Este campo es obligatorio.",
+      "Size": "La longitud no es válida.",
+      "Pattern": "El formato no es válido.",
+      "typeMismatch": "El valor no es válido.",
+      "USERNAME_TAKEN": "Ese usuario ya existe.",
+      "DUPLICATED": "Ya existe un registro con este valor.",
+      "INVALID_QUERY_PARAMETER": "Parámetro de consulta no válido."
+    }
   },
   "primeng": {
     "startsWith": "Comienza con",

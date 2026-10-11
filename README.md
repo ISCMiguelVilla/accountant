@@ -2,7 +2,7 @@
 
 Aplicación web de **finanzas personales**, multiusuario y de uso doméstico, pensada para ejecutarse **en local** (en tu propio equipo o en tu red de casa). Permite registrar cuentas (bancos, efectivo, tarjetas de crédito, inversiones, préstamos…) y los movimientos de dinero entre ellas, y a partir de eso muestra cuánto tienes, cuánto debes, cuánto ganas, cuánto gastas y si vas cumpliendo tu meta de ahorro anual.
 
-> **Estado del proyecto:** en construcción. Este README describe el sistema completo tal como está especificado en [`docs/PROMPT-accountant-v2.md`](docs/PROMPT-accountant-v2.md), que es la especificación de referencia. La implementación avanza por fases (ver [Hoja de ruta](#14-hoja-de-ruta-fases)). **Fase 1 (andamiaje) completada:** dependencias, perfiles `dev`/`prod`, esquema Flyway V1, manejo de errores `ProblemDetail`, seguridad base, tema PrimeNG, i18n ES/EN, layout y Spotless/ESLint/Prettier. Las pantallas funcionales llegan en las siguientes fases.
+> **Estado del proyecto:** en construcción. Este README describe el sistema completo tal como está especificado en [`docs/PROMPT-accountant-v2.md`](docs/PROMPT-accountant-v2.md), que es la especificación de referencia. La implementación avanza por fases (ver [Hoja de ruta](#14-hoja-de-ruta-fases)). **Fases completadas:** 1 (andamiaje: perfiles, Flyway V1, errores `ProblemDetail`, tema PrimeNG, i18n ES/EN, layout, Spotless/ESLint/Prettier) y 2 (autenticación JWT con único administrador, administración de usuarios y monedas, paginado/filtros/orden genéricos y tablas sincronizadas con la URL). Las pantallas de cuentas, transacciones y reportes llegan en las siguientes fases.
 
 ---
 

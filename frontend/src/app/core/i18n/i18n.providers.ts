@@ -20,7 +20,12 @@ export function provideI18n(): (Provider | EnvironmentProviders)[] {
   return [
     provideTranslateService({
       fallbackLang: DEFAULT_LANGUAGE,
-      loader: provideTranslateHttpLoader({ prefix: 'i18n/', suffix: '.json' }),
+      // HttpBackend: translation files skip the interceptors, which themselves need translations.
+      loader: provideTranslateHttpLoader({
+        prefix: 'i18n/',
+        suffix: '.json',
+        useHttpBackend: true,
+      }),
     }),
     // Default locale for pipes used without an explicit locale; language-aware
     // components pass LanguageService.locale() so they follow hot language switches.
