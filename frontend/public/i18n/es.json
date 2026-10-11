@@ -154,7 +154,7 @@
       "INVALID_QUERY_PARAMETER": "Parámetro de consulta no válido.",
       "INVALID_PARENT": "Esa cuenta no puede ser la cuenta padre de este tipo.",
       "PARENT_CYCLE": "La cuenta padre no puede ser la misma cuenta ni una de sus sub-cuentas.",
-      "TYPE_CHANGE_NOT_ALLOWED": "No se puede cambiar el tipo: la cuenta tiene sub-cuentas o transacciones.",
+      "TYPE_CHANGE_NOT_ALLOWED": "No se puede cambiar a ese tipo: debe aceptar sus sub-cuentas y, si tiene movimientos, estar permitido por su cuenta padre.",
       "CREDIT_REQUIRES_DEBTOR": "Una cuenta con línea de crédito debe ser de tipo Por pagar.",
       "TEMPORARY_NOT_ALLOWED": "Solo las cuentas de Inversión o Negocio pueden ser temporales.",
       "CURRENCY_NOT_AVAILABLE": "La moneda no está disponible.",
@@ -162,7 +162,8 @@
       "INVALID_CRON": "La expresión cron no es válida.",
       "PositiveOrZero": "Debe ser mayor o igual a 0.",
       "Positive": "Debe ser mayor a 0.",
-      "Digits": "Máximo 2 decimales."
+      "Digits": "Máximo 2 decimales.",
+      "TYPE_CHANGE_REQUIRES_ZERO_BALANCE": "Para cambiar a un tipo sin saldo, el saldo debe ser 0."
     },
     "min": "El valor mínimo es {{min}}."
   },
@@ -185,7 +186,7 @@
     "includeInBalance": "Incluir en el balance",
     "temporary": "Cuenta temporal",
     "temporaryHelp": "Se deshabilita automáticamente cuando se registra su retiro de utilidades (PROFIT).",
-    "typeLocked": "Tiene sub-cuentas, transacciones o línea de crédito: solo se permite cambiar entre Almacén e Inversión.",
+    "typeLocked": "Tiene movimientos, sub-cuentas o línea de crédito: solo se muestran los tipos permitidos por su cuenta padre y sus sub-cuentas.",
     "balanceOverwriteWarning": "Esta cuenta tiene transacciones: el nuevo saldo sobrescribe el actual sin generar una transacción.",
     "saved": "Cuenta guardada.",
     "deleted": "Cuenta eliminada.",

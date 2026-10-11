@@ -6,6 +6,7 @@ import com.devs.accountant.account.dto.AccountOption;
 import com.devs.accountant.account.dto.AccountRef;
 import com.devs.accountant.account.dto.AccountRequest;
 import com.devs.accountant.account.dto.AccountResponse;
+import com.devs.accountant.account.dto.AccountUpdateRequest;
 import com.devs.accountant.shared.paging.PageParams;
 import com.devs.accountant.shared.paging.PageResponse;
 import jakarta.validation.Valid;
@@ -64,7 +65,7 @@ public class AccountController {
     }
 
     @PutMapping("/{id}")
-    public AccountDetailResponse update(@PathVariable Long id, @Valid @RequestBody AccountRequest request) {
+    public AccountDetailResponse update(@PathVariable Long id, @Valid @RequestBody AccountUpdateRequest request) {
         return accountService.update(id, request);
     }
 

@@ -230,7 +230,12 @@ Reglas de cuentas:
 2. Nombre único por usuario + tipo (entre cuentas no eliminadas).
 3. El padre debe existir, pertenecer al usuario, no estar DELETED y aceptar el tipo hijo (tabla anterior).
 4. **Prohibido crear ciclos**: el nuevo padre no puede ser la propia cuenta ni ningún descendiente de **todo** su subárbol (hijos, nietos, etc.). Resolver con CTE recursiva en Postgres.
-5. No se puede cambiar el `type` si la cuenta tiene sub-cuentas o transacciones, **excepto** entre STORAGE ↔ INVESTMENT (y respetando las sub-cuentas permitidas del nuevo tipo).
+5. **Cambio de tipo**:
+   - El nuevo tipo debe seguir aceptando todas sus sub-cuentas no eliminadas.
+   - Si la cuenta **tiene movimientos** (transacciones), solo puede cambiar a los tipos permitidos como sub-cuenta por **el grupo al que pertenece** (su cuenta padre), nunca a GROUP. Una cuenta raíz (sin padre) con movimientos solo puede cambiar entre STORAGE ↔ INVESTMENT.
+   - Para cambiar a un tipo sin saldo (GROUP, SUPPLIER, CONSUMER) el saldo debe ser 0.
+   - Una cuenta con Credit debe seguir siendo DEBTOR.
+   - **Actualización parcial**: `PUT /accounts/{id}` solo modifica las propiedades enviadas; las ausentes conservan su valor y el `id` nunca cambia. Un `null` explícito limpia `parentId`, `icon` o `color`.
 6. **Edición manual de saldo**: el formulario de cuentas permite modificar el saldo (≥ 0) aunque la cuenta ya tenga transacciones. Se sobrescribe directamente; **no genera transacción**. Al hacerlo se incrementa `version`, de modo que un borrador de lote abierto detecta el cambio (5.6 punto 10). En DEBTOR también se puede editar `pending_expense` (por defecto igual al saldo al crear la cuenta; si el saldo baja por debajo, se ajusta al nuevo saldo).
 7. Cuentas usables en transacciones: ACTIVE y distintas de GROUP.
 8. Cuentas "en uso" (cards y resumen del home): ACTIVE, `include_in_balance = true`, `balance > 0`, tipo distinto de SUPPLIER, GROUP, CONSUMER.

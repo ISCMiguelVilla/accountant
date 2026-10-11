@@ -6,6 +6,7 @@ import com.devs.accountant.account.dto.AccountOption;
 import com.devs.accountant.account.dto.AccountRef;
 import com.devs.accountant.account.dto.AccountRequest;
 import com.devs.accountant.account.dto.AccountResponse;
+import com.devs.accountant.account.dto.AccountUpdateRequest;
 import com.devs.accountant.credit.Credit;
 import com.devs.accountant.credit.CreditRepository;
 import com.devs.accountant.credit.dto.CreditResponse;
@@ -50,6 +51,7 @@ public class AccountServiceImpl implements AccountService {
     static final String INVALID_PARENT = "INVALID_PARENT";
     static final String PARENT_CYCLE = "PARENT_CYCLE";
     static final String TYPE_CHANGE_NOT_ALLOWED = "TYPE_CHANGE_NOT_ALLOWED";
+    static final String TYPE_CHANGE_REQUIRES_ZERO_BALANCE = "TYPE_CHANGE_REQUIRES_ZERO_BALANCE";
     static final String CREDIT_REQUIRES_DEBTOR = "CREDIT_REQUIRES_DEBTOR";
     static final String TEMPORARY_NOT_ALLOWED = "TEMPORARY_NOT_ALLOWED";
     static final String CURRENCY_NOT_AVAILABLE = "CURRENCY_NOT_AVAILABLE";
@@ -154,12 +156,12 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     @Transactional
-    public AccountDetailResponse update(Long id, AccountRequest request) {
+    public AccountDetailResponse update(Long id, AccountUpdateRequest request) {
         Account account = load(id);
-        if (request.version() != null && !request.version().equals(account.getVersion())) {
+        if (request.getVersion() != null && !request.getVersion().equals(account.getVersion())) {
             throw new BusinessException(ErrorCode.CONFLICT, "Account " + id + " was modified");
         }
-        apply(account, request, false);
+        apply(account, merge(account, request), false);
         accountRepository.saveAndFlush(account);
         return detail(account);
     }
@@ -181,6 +183,41 @@ public class AccountServiceImpl implements AccountService {
 
     // ------------------------------------------------------------------ rules
 
+    /**
+     * Update = only the properties present in the request; everything else keeps its stored value. The result is a
+     * complete request validated exactly like a creation. The id is never touched.
+     */
+    private static AccountRequest merge(Account account, AccountUpdateRequest update) {
+        AccountType type = update.has("type") ? required(update.getType(), "type") : account.getType();
+        Long currentParent =
+                account.getParent() == null ? null : account.getParent().getId();
+        boolean temporary = update.has("temporary") && update.getTemporary() != null
+                ? update.getTemporary()
+                : account.isTemporary() && type.canBeTemporary();
+        return new AccountRequest(
+                update.has("name") ? required(update.getName(), "name") : account.getName(),
+                type,
+                update.has("parentId") ? update.getParentId() : currentParent,
+                update.has("currencyId")
+                        ? required(update.getCurrencyId(), "currencyId")
+                        : account.getCurrency().getId(),
+                update.getBalance() != null ? update.getBalance() : account.getBalance(),
+                update.getPendingExpense() != null ? update.getPendingExpense() : account.getPendingExpense(),
+                update.has("icon") ? update.getIcon() : account.getIcon(),
+                update.has("color") ? update.getColor() : account.getColor(),
+                update.getIncludeInBalance() != null ? update.getIncludeInBalance() : account.isIncludeInBalance(),
+                temporary,
+                update.getStatus() != null ? update.getStatus() : account.getStatus(),
+                update.getVersion());
+    }
+
+    private static <T> T required(T value, String field) {
+        if (value == null) {
+            throw BusinessException.fieldError(field, "NotNull");
+        }
+        return value;
+    }
+
     private void apply(Account account, AccountRequest request, boolean creating) {
         AccountType type = request.type();
         String name = request.name().trim();
@@ -190,9 +227,6 @@ public class AccountServiceImpl implements AccountService {
                 account.getUserId(), name, type, AccountStatus.DELETED, id)) {
             throw BusinessException.fieldError("name", DUPLICATED);
         }
-        if (!creating && type != account.getType()) {
-            checkTypeChange(account, type);
-        }
         if (request.status() == AccountStatus.DELETED) {
             throw BusinessException.fieldError("status", INVALID_STATUS);
         }
@@ -200,8 +234,12 @@ public class AccountServiceImpl implements AccountService {
             throw BusinessException.fieldError("temporary", TEMPORARY_NOT_ALLOWED);
         }
 
+        Account parent = parent(account, request.parentId(), type, creating);
+        if (!creating && type != account.getType()) {
+            checkTypeChange(account, type, parent);
+        }
         account.setCurrency(currency(account, request.currencyId()));
-        account.setParent(parent(account, request.parentId(), type, creating));
+        account.setParent(parent);
         account.setName(name);
         account.setType(type);
         applyBalance(account, request, creating);
@@ -243,22 +281,35 @@ public class AccountServiceImpl implements AccountService {
     }
 
     /**
-     * The type cannot change with sub-accounts or transactions, except STORAGE ↔ INVESTMENT (and the new type must
-     * still accept every sub-account). An account with a credit line must stay DEBTOR.
+     * Type change rules:
+     * <ul>
+     *   <li>an account with a credit line must stay DEBTOR;
+     *   <li>the new type must still accept every live sub-account;
+     *   <li>switching to a type without balance requires a zero balance (no money silently dropped);
+     *   <li>with transactions ("movimientos"), only the types allowed under its parent ("the group it belongs to")
+     *       and never GROUP; a root account (no parent) can only switch STORAGE <-> INVESTMENT.
+     * </ul>
+     * The parent itself must always accept the new type (checked when resolving the parent).
      */
-    private void checkTypeChange(Account account, AccountType newType) {
+    private void checkTypeChange(Account account, AccountType newType, Account newParent) {
         if (newType != AccountType.DEBTOR && creditRepository.existsByAccountId(account.getId())) {
             throw BusinessException.fieldError("type", CREDIT_REQUIRES_DEBTOR);
         }
         Set<AccountType> childTypes = accountRepository.findChildTypes(account.getId(), AccountStatus.DELETED);
-        boolean hasTransactions = accountRepository.hasTransactions(account.getId());
-        if (childTypes.isEmpty() && !hasTransactions) {
-            return;
-        }
-        boolean allowed = AccountType.isFreeTypeChange(account.getType(), newType)
-                && newType.allowedChildren().containsAll(childTypes);
-        if (!allowed) {
+        if (!newType.allowedChildren().containsAll(childTypes)) {
             throw BusinessException.fieldError("type", TYPE_CHANGE_NOT_ALLOWED);
+        }
+        if (!newType.hasBalance() && account.balanceOrZero().signum() != 0) {
+            throw BusinessException.fieldError("type", TYPE_CHANGE_REQUIRES_ZERO_BALANCE);
+        }
+        if (accountRepository.hasTransactions(account.getId())) {
+            boolean allowed = newType.isTransactional()
+                    && (newParent != null
+                            ? newParent.getType().accepts(newType)
+                            : AccountType.isFreeTypeChange(account.getType(), newType));
+            if (!allowed) {
+                throw BusinessException.fieldError("type", TYPE_CHANGE_NOT_ALLOWED);
+            }
         }
     }
 
@@ -300,9 +351,11 @@ public class AccountServiceImpl implements AccountService {
 
     private AccountDetailResponse detail(Account account) {
         Credit credit = creditRepository.findByAccountId(account.getId()).orElse(null);
+        Set<AccountType> childTypes = accountRepository.findChildTypes(account.getId(), AccountStatus.DELETED);
         return new AccountDetailResponse(
                 toResponse(account, credit),
-                accountRepository.existsByParentIdAndStatusNot(account.getId(), AccountStatus.DELETED),
+                !childTypes.isEmpty(),
+                childTypes,
                 accountRepository.hasTransactions(account.getId()));
     }
 

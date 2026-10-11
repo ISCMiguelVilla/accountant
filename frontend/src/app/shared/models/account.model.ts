@@ -48,6 +48,8 @@ export interface Account {
 
 export interface AccountDetail extends Account {
   hasChildren: boolean;
+  /** Types of the live sub-accounts: the account type must keep accepting them. */
+  childTypes: AccountType[];
   hasTransactions: boolean;
 }
 

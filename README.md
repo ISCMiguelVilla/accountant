@@ -257,7 +257,8 @@ Reglas de cuentas:
 - **Saldo**: GROUP, SUPPLIER y CONSUMER no tienen saldo. Los demás, saldo ≥ 0.
 - **Nombre único** por usuario y tipo.
 - **Jerarquía**: el padre debe aceptar el tipo hijo (tabla anterior) y **no se permiten ciclos** (una cuenta no puede colgar de sí misma ni de ningún descendiente).
-- **Cambio de tipo**: no se permite si la cuenta tiene sub-cuentas o transacciones, excepto entre STORAGE ↔ INVESTMENT.
+- **Cambio de tipo**: el nuevo tipo debe aceptar las sub-cuentas existentes. Si la cuenta ya tiene movimientos, solo puede cambiar a los tipos que acepta su cuenta padre (el grupo al que pertenece), nunca a Grupo; una cuenta sin padre con movimientos solo puede cambiar entre Almacén e Inversión. Para cambiar a un tipo sin saldo, el saldo debe ser 0.
+- **Actualización**: al editar una cuenta solo se modifican los datos enviados; el resto se conserva y el identificador nunca cambia.
 - **Edición manual de saldo**: se puede corregir el saldo desde el formulario; se sobrescribe directamente **sin generar transacción** (útil para ajustes o saldo inicial).
 - **Estados**: `ACTIVE`, `DISABLED` (no usable, reactivable) y `DELETED` (borrado lógico; solo si el saldo es 0 y no tiene sub-cuentas activas).
 - **Incluir en balance**: decide si la cuenta suma en las tarjetas y totales del home.

@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.devs.accountant.account.dto.AccountRequest;
+import com.devs.accountant.account.dto.AccountUpdateRequest;
 import com.devs.accountant.credit.Credit;
 import com.devs.accountant.credit.CreditRepository;
 import com.devs.accountant.currency.Currency;
@@ -154,7 +155,7 @@ class AccountServiceImplTest {
         when(accountRepository.findSubtreeIds(1L)).thenReturn(Set.of(1L, 2L, 3L));
 
         assertFieldError(
-                () -> service.update(1L, request("Banco", AccountType.STORAGE, 3L, null)),
+                () -> service.update(1L, full(request("Banco", AccountType.STORAGE, 3L, null))),
                 "parentId",
                 AccountServiceImpl.PARENT_CYCLE);
         assertThat(root.getParent()).isNull();
@@ -165,7 +166,7 @@ class AccountServiceImplTest {
         Account debtor = existing(1L, AccountType.DEBTOR, "5000");
         debtor.setPendingExpense(new BigDecimal("4000.00"));
 
-        service.update(1L, request("Visa", AccountType.DEBTOR, null, new BigDecimal("2500")));
+        service.update(1L, full(request("Visa", AccountType.DEBTOR, null, new BigDecimal("2500"))));
 
         assertThat(debtor.getBalance()).isEqualByComparingTo("2500.00");
         assertThat(debtor.getPendingExpense()).isEqualByComparingTo("2500.00");
@@ -174,8 +175,8 @@ class AccountServiceImplTest {
     @Test
     void staleVersionIsAConflict() {
         existing(1L, AccountType.STORAGE, "100");
-        AccountRequest stale = new AccountRequest(
-                "Banco", AccountType.STORAGE, null, 1L, null, null, null, null, null, null, null, 3L);
+        AccountUpdateRequest stale = new AccountUpdateRequest();
+        stale.setVersion(3L);
 
         assertThatThrownBy(() -> service.update(1L, stale))
                 .isInstanceOf(BusinessException.class)
@@ -184,35 +185,129 @@ class AccountServiceImplTest {
     }
 
     @Test
-    void typeChangesFreelyWithoutChildrenOrTransactions() {
-        Account account = existing(1L, AccountType.CREDITOR, "100");
+    void onlyThePropertiesSentAreUpdatedAndTheIdNeverChanges() {
+        Account account = existing(1L, AccountType.STORAGE, "100");
+        Account parent = account(2L, AccountType.GROUP, null);
+        account.setParent(parent);
+        account.setIcon("pi pi-wallet");
+        account.setColor("#2563EB");
+        account.setIncludeInBalance(false);
+        when(accountRepository.findByIdAndUserId(2L, USER)).thenReturn(Optional.of(parent));
+        AccountUpdateRequest update = new AccountUpdateRequest();
+        update.setName("Banco principal");
 
-        service.update(1L, request("Cuenta", AccountType.SUPPLIER, null, null));
+        service.update(1L, update);
+
+        assertThat(account.getId()).isEqualTo(1L);
+        assertThat(account.getName()).isEqualTo("Banco principal");
+        assertThat(account.getType()).isEqualTo(AccountType.STORAGE);
+        assertThat(account.getParent()).isSameAs(parent);
+        assertThat(account.getBalance()).isEqualByComparingTo("100.00");
+        assertThat(account.getIcon()).isEqualTo("pi pi-wallet");
+        assertThat(account.getColor()).isEqualTo("#2563EB");
+        assertThat(account.isIncludeInBalance()).isFalse();
+        assertThat(account.getCurrency()).isSameAs(mxn);
+    }
+
+    @Test
+    void explicitNullClearsParentIconAndColor() {
+        Account account = existing(1L, AccountType.STORAGE, "100");
+        Account parent = account(2L, AccountType.GROUP, null);
+        account.setParent(parent);
+        account.setIcon("pi pi-wallet");
+        account.setColor("#2563EB");
+        AccountUpdateRequest update = new AccountUpdateRequest();
+        update.setParentId(null);
+        update.setIcon(null);
+        update.setColor(null);
+
+        service.update(1L, update);
+
+        assertThat(account.getParent()).isNull();
+        assertThat(account.getIcon()).isNull();
+        assertThat(account.getColor()).isNull();
+        assertThat(account.getName()).isEqualTo("Account 1");
+    }
+
+    @Test
+    void requiredPropertiesCannotBeSentAsNull() {
+        existing(1L, AccountType.STORAGE, "100");
+        AccountUpdateRequest update = new AccountUpdateRequest();
+        update.setType(null);
+
+        assertFieldError(() -> service.update(1L, update), "type", "NotNull");
+    }
+
+    @Test
+    void typeChangesFreelyWithoutChildrenOrTransactions() {
+        Account account = existing(1L, AccountType.CREDITOR, "0");
+
+        service.update(1L, type(AccountType.SUPPLIER));
 
         assertThat(account.getType()).isEqualTo(AccountType.SUPPLIER);
         assertThat(account.getBalance()).isNull();
     }
 
     @Test
-    void typeChangeWithTransactionsIsOnlyAllowedBetweenStorageAndInvestment() {
+    void changingToATypeWithoutBalanceRequiresZeroBalance() {
+        existing(1L, AccountType.STORAGE, "100");
+
+        assertFieldError(
+                () -> service.update(1L, type(AccountType.CONSUMER)),
+                "type",
+                AccountServiceImpl.TYPE_CHANGE_REQUIRES_ZERO_BALANCE);
+    }
+
+    @Test
+    void withTransactionsTheTypeMustBeAllowedByTheParentGroup() {
+        Account account = existing(1L, AccountType.INVESTMENT, "100");
+        Account storageParent = account(2L, AccountType.STORAGE, BigDecimal.TEN);
+        account.setParent(storageParent);
+        when(accountRepository.findByIdAndUserId(2L, USER)).thenReturn(Optional.of(storageParent));
+        when(accountRepository.hasTransactions(1L)).thenReturn(true);
+
+        // STORAGE accepts STORAGE, INVESTMENT and DEBTOR as sub-accounts...
+        assertThatCode(() -> service.update(1L, type(AccountType.DEBTOR))).doesNotThrowAnyException();
+        assertThat(account.getType()).isEqualTo(AccountType.DEBTOR);
+        // ...but not CREDITOR.
+        assertFieldError(
+                () -> service.update(1L, type(AccountType.CREDITOR)), "parentId", AccountServiceImpl.INVALID_PARENT);
+    }
+
+    @Test
+    void withTransactionsUnderAGroupAnyTransactionalTypeIsAllowedButNotGroup() {
+        Account account = existing(1L, AccountType.STORAGE, "100");
+        Account group = account(2L, AccountType.GROUP, null);
+        account.setParent(group);
+        when(accountRepository.findByIdAndUserId(2L, USER)).thenReturn(Optional.of(group));
+        when(accountRepository.hasTransactions(1L)).thenReturn(true);
+
+        assertThatCode(() -> service.update(1L, type(AccountType.CREDITOR))).doesNotThrowAnyException();
+        assertThat(account.getType()).isEqualTo(AccountType.CREDITOR);
+        account.setBalance(BigDecimal.ZERO);
+        assertFieldError(
+                () -> service.update(1L, type(AccountType.GROUP)), "type", AccountServiceImpl.TYPE_CHANGE_NOT_ALLOWED);
+    }
+
+    @Test
+    void rootAccountWithTransactionsOnlySwitchesBetweenStorageAndInvestment() {
         existing(1L, AccountType.STORAGE, "100");
         when(accountRepository.hasTransactions(1L)).thenReturn(true);
 
         assertFieldError(
-                () -> service.update(1L, request("Banco", AccountType.CREDITOR, null, null)),
+                () -> service.update(1L, type(AccountType.CREDITOR)),
                 "type",
                 AccountServiceImpl.TYPE_CHANGE_NOT_ALLOWED);
-        assertThatCode(() -> service.update(1L, request("Banco", AccountType.INVESTMENT, null, null)))
-                .doesNotThrowAnyException();
+        assertThatCode(() -> service.update(1L, type(AccountType.INVESTMENT))).doesNotThrowAnyException();
     }
 
     @Test
-    void storageToInvestmentMustStillAcceptEverySubAccount() {
+    void newTypeMustStillAcceptEverySubAccount() {
         existing(1L, AccountType.STORAGE, "100");
         when(accountRepository.findChildTypes(1L, AccountStatus.DELETED)).thenReturn(Set.of(AccountType.DEBTOR));
 
         assertFieldError(
-                () -> service.update(1L, request("Banco", AccountType.INVESTMENT, null, null)),
+                () -> service.update(1L, type(AccountType.INVESTMENT)),
                 "type",
                 AccountServiceImpl.TYPE_CHANGE_NOT_ALLOWED);
     }
@@ -223,9 +318,7 @@ class AccountServiceImplTest {
         when(creditRepository.existsByAccountId(1L)).thenReturn(true);
 
         assertFieldError(
-                () -> service.update(1L, request("Visa", AccountType.STORAGE, null, null)),
-                "type",
-                AccountServiceImpl.CREDIT_REQUIRES_DEBTOR);
+                () -> service.update(1L, type(AccountType.STORAGE)), "type", AccountServiceImpl.CREDIT_REQUIRES_DEBTOR);
     }
 
     // ------------------------------------------------------------ delete
@@ -286,6 +379,30 @@ class AccountServiceImplTest {
         currency.setIso("MXN");
         currency.setStatus(status);
         return currency;
+    }
+
+    /** Update carrying every property, like the account form sends it. */
+    private static AccountUpdateRequest full(AccountRequest request) {
+        AccountUpdateRequest update = new AccountUpdateRequest();
+        update.setName(request.name());
+        update.setType(request.type());
+        update.setParentId(request.parentId());
+        update.setCurrencyId(request.currencyId());
+        update.setBalance(request.balance());
+        update.setPendingExpense(request.pendingExpense());
+        update.setIcon(request.icon());
+        update.setColor(request.color());
+        update.setIncludeInBalance(request.includeInBalance());
+        update.setTemporary(request.temporary());
+        update.setStatus(request.status());
+        update.setVersion(request.version());
+        return update;
+    }
+
+    private static AccountUpdateRequest type(AccountType type) {
+        AccountUpdateRequest update = new AccountUpdateRequest();
+        update.setType(type);
+        return update;
     }
 
     private static AccountRequest request(String name, AccountType type, Long parentId, BigDecimal balance) {

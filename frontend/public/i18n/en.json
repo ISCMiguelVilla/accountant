@@ -154,7 +154,7 @@
       "INVALID_QUERY_PARAMETER": "Invalid query parameter.",
       "INVALID_PARENT": "That account cannot be the parent of this type.",
       "PARENT_CYCLE": "The parent cannot be the account itself or one of its sub-accounts.",
-      "TYPE_CHANGE_NOT_ALLOWED": "The type cannot change: the account has sub-accounts or transactions.",
+      "TYPE_CHANGE_NOT_ALLOWED": "It cannot switch to that type: it must accept its sub-accounts and, with transactions, be allowed by its parent.",
       "CREDIT_REQUIRES_DEBTOR": "An account with a credit line must be Payable.",
       "TEMPORARY_NOT_ALLOWED": "Only Investment or Business accounts can be temporary.",
       "CURRENCY_NOT_AVAILABLE": "The currency is not available.",
@@ -162,7 +162,8 @@
       "INVALID_CRON": "The cron expression is not valid.",
       "PositiveOrZero": "Must be greater than or equal to 0.",
       "Positive": "Must be greater than 0.",
-      "Digits": "At most 2 decimals."
+      "Digits": "At most 2 decimals.",
+      "TYPE_CHANGE_REQUIRES_ZERO_BALANCE": "To switch to a type without balance, the balance must be 0."
     },
     "min": "The minimum value is {{min}}."
   },
@@ -185,7 +186,7 @@
     "includeInBalance": "Include in balance",
     "temporary": "Temporary account",
     "temporaryHelp": "It is disabled automatically when its PROFIT (withdrawal) is recorded.",
-    "typeLocked": "It has sub-accounts, transactions or a credit line: only Storage ↔ Investment changes are allowed.",
+    "typeLocked": "It has transactions, sub-accounts or a credit line: only the types allowed by its parent and its sub-accounts are shown.",
     "balanceOverwriteWarning": "This account has transactions: the new balance overwrites the current one without creating a transaction.",
     "saved": "Account saved.",
     "deleted": "Account deleted.",

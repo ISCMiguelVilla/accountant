@@ -30,6 +30,7 @@ import { CronFieldComponent } from '../../shared/cron/cron-field.component';
 import { AccountStatus, EDITABLE_ACCOUNT_STATUSES } from '../../shared/enums/account-status.enum';
 import {
   ACCOUNT_TYPES,
+  ALLOWED_CHILDREN,
   AccountType,
   canBeTemporary,
   freeTypeChanges,
@@ -367,18 +368,41 @@ export class AccountFormPage {
     stream: ({ params }) => this.api.parentOptions(params.type, params.accountId),
   });
 
-  /** With sub-accounts or transactions only STORAGE ↔ INVESTMENT is allowed; a credit line pins DEBTOR. */
+  private readonly parentId = toSignal(this.form.controls.parentId.valueChanges, {
+    initialValue: this.form.controls.parentId.value,
+  });
+
   protected readonly typeLocked = computed(() => {
     const account = this.account.value();
     return !!account && (account.hasChildren || account.hasTransactions || !!account.credit);
   });
 
+  /**
+   * Mirrors the backend rules: a credit line pins DEBTOR; the type must keep accepting its sub-accounts;
+   * with transactions only the types allowed by the parent group (never GROUP) — a root account can
+   * only switch STORAGE ↔ INVESTMENT.
+   */
   protected readonly typeOptions = computed<AccountType[]>(() => {
     const account = this.account.value();
-    if (!account || !this.typeLocked()) {
+    if (!account) {
       return [...ACCOUNT_TYPES];
     }
-    return account.credit ? ['DEBTOR'] : freeTypeChanges(account.type);
+    if (account.credit) {
+      return ['DEBTOR'];
+    }
+    let options = ACCOUNT_TYPES.filter((type) =>
+      account.childTypes.every((child) => ALLOWED_CHILDREN[type].includes(child)),
+    );
+    if (account.hasTransactions) {
+      const parentId = this.parentId();
+      const parentType =
+        parentId === account.parent?.id
+          ? account.parent.type
+          : this.parents.value()?.find((parent) => parent.id === parentId)?.type;
+      const allowed = parentType ? ALLOWED_CHILDREN[parentType] : freeTypeChanges(account.type);
+      options = options.filter((type) => type !== 'GROUP' && allowed.includes(type));
+    }
+    return options.includes(account.type) ? options : [account.type, ...options];
   });
 
   protected readonly showBalance = computed(() => hasBalance(this.type()));

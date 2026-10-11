@@ -6,6 +6,7 @@ import com.devs.accountant.account.dto.AccountOption;
 import com.devs.accountant.account.dto.AccountRef;
 import com.devs.accountant.account.dto.AccountRequest;
 import com.devs.accountant.account.dto.AccountResponse;
+import com.devs.accountant.account.dto.AccountUpdateRequest;
 import com.devs.accountant.shared.paging.PageParams;
 import com.devs.accountant.shared.paging.PageResponse;
 import java.util.List;
@@ -27,7 +28,8 @@ public interface AccountService {
 
     AccountDetailResponse create(AccountRequest request);
 
-    AccountDetailResponse update(Long id, AccountRequest request);
+    /** Partial update: only the properties present in the request change; the id never changes. */
+    AccountDetailResponse update(Long id, AccountUpdateRequest request);
 
     /** Logical delete; only with zero balance and no live sub-accounts. */
     void delete(Long id);
