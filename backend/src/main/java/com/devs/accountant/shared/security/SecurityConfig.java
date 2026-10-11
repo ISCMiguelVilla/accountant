@@ -1,6 +1,9 @@
 package com.devs.accountant.shared.security;
 
+import com.devs.accountant.auth.JwtAuthenticationFilter;
+import com.devs.accountant.auth.JwtService;
 import com.devs.accountant.shared.config.AppProperties;
+import com.devs.accountant.user.UserRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -11,6 +14,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -25,6 +29,8 @@ public class SecurityConfig {
 
     private final AppProperties properties;
     private final ProblemDetailAuthenticationHandlers authenticationHandlers;
+    private final JwtService jwtService;
+    private final UserRepository userRepository;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -42,6 +48,8 @@ public class SecurityConfig {
                         .hasRole("ADMIN")
                         .anyRequest()
                         .authenticated());
+        http.addFilterBefore(
+                new JwtAuthenticationFilter(jwtService, userRepository), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 

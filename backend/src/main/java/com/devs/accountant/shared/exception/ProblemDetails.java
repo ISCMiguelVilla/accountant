@@ -36,6 +36,9 @@ public class ProblemDetails {
         if (ex.getTransactionUuid() != null) {
             problem.setProperty(TRANSACTION_UUID, ex.getTransactionUuid());
         }
+        if (!ex.getErrors().isEmpty()) {
+            problem.setProperty(ERRORS, ex.getErrors());
+        }
         return problem;
     }
 

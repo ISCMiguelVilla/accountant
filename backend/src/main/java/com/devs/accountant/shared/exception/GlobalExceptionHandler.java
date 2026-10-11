@@ -59,13 +59,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        // Field → constraint code (NotBlank, Size, typeMismatch...); the frontend translates the code.
         Map<String, String> errors = new LinkedHashMap<>();
         for (FieldError error : ex.getBindingResult().getFieldErrors()) {
-            errors.putIfAbsent(error.getField(), error.getDefaultMessage());
+            errors.putIfAbsent(error.getField(), error.getCode());
         }
         ex.getBindingResult()
                 .getGlobalErrors()
-                .forEach(error -> errors.putIfAbsent(error.getObjectName(), error.getDefaultMessage()));
+                .forEach(error -> errors.putIfAbsent(error.getObjectName(), error.getCode()));
         return ResponseEntity.badRequest().body(problems.validation(errors));
     }
 

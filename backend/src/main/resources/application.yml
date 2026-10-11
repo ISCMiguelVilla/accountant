@@ -3,6 +3,9 @@ spring:
     name: accountant
   profiles:
     default: dev
+  autoconfigure:
+    # Authentication is JWT based (no in-memory user with a generated password).
+    exclude: org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}
