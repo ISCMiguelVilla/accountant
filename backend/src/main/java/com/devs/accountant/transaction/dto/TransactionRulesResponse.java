@@ -4,6 +4,7 @@ import com.devs.accountant.account.AccountType;
 import com.devs.accountant.transaction.OperationType;
 import com.devs.accountant.transaction.TransactionType;
 import com.devs.accountant.transaction.engine.DestinationMode;
+import com.devs.accountant.transaction.engine.Side;
 import java.util.List;
 
 /**
@@ -12,23 +13,25 @@ import java.util.List;
  */
 public record TransactionRulesResponse(List<TypeRule> types) {
 
+    /** {@code originPendingAllowed} / {@code destinationPendingAllowed}: which side may stay unapplied. */
     public record TypeRule(
             TransactionType type,
             List<AccountType> origins,
             List<AccountType> destinations,
             DestinationMode destinationMode,
-            boolean pendingAllowed,
+            boolean originPendingAllowed,
+            boolean destinationPendingAllowed,
             List<Variant> variants) {}
 
     /**
-     * One origin type / destination type combination ({@code destination} null = no destination). {@code
-     * operationType} is null for PAYMENT: the engine resolves it (SUBTRACTION when part of the payment is recognized
-     * as expense, NEUTER otherwise).
+     * One origin type / destination type combination ({@code destination} null = no destination). {@code feeSide} is
+     * the account that pays the fee (null when the fee is disabled); reports count the fee as an expense.
      */
     public record Variant(
             AccountType origin,
             AccountType destination,
             OperationType operationType,
             boolean feeEnabled,
-            boolean feeMustBeBelowAmount) {}
+            boolean feeMustBeBelowAmount,
+            Side feeSide) {}
 }

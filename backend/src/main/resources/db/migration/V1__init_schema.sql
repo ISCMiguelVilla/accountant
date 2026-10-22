@@ -55,8 +55,7 @@ CREATE TABLE accounts (
     name               VARCHAR(100)  NOT NULL,
     type               VARCHAR(20)   NOT NULL,
     balance            NUMERIC(19, 2),
-    pending_expense    NUMERIC(19, 2),
-    icon               VARCHAR(50),
+    icon              VARCHAR(50),
     color              VARCHAR(7),
     include_in_balance BOOLEAN       NOT NULL DEFAULT TRUE,
     is_temporary       BOOLEAN       NOT NULL DEFAULT FALSE,
@@ -72,10 +71,6 @@ CREATE TABLE accounts (
     CONSTRAINT ck_accounts_balance_by_type CHECK (
         (type IN ('GROUP', 'SUPPLIER', 'CONSUMER') AND balance IS NULL)
         OR (type NOT IN ('GROUP', 'SUPPLIER', 'CONSUMER') AND balance IS NOT NULL)),
-    -- pending_expense only exists on DEBTOR accounts: 0 <= pending_expense <= balance.
-    CONSTRAINT ck_accounts_pending_expense CHECK (
-        (type = 'DEBTOR' AND pending_expense IS NOT NULL AND pending_expense >= 0 AND pending_expense <= balance)
-        OR (type <> 'DEBTOR' AND pending_expense IS NULL)),
     CONSTRAINT ck_accounts_temporary CHECK (is_temporary = FALSE OR type IN ('INVESTMENT', 'BUSINESS')),
     CONSTRAINT ck_accounts_color CHECK (color IS NULL OR color ~ '^#[0-9A-F]{6}$'),
     CONSTRAINT ck_accounts_not_own_parent CHECK (parent_account_id IS NULL OR parent_account_id <> id)
@@ -154,9 +149,13 @@ CREATE TABLE transactions (
     origin_balance_after       NUMERIC(19, 2),
     destination_balance_before NUMERIC(19, 2),
     destination_balance_after  NUMERIC(19, 2),
-    applied                    BOOLEAN        NOT NULL,
+    -- Whether the amount is already reflected on each side, and when (reports use these dates).
+    -- destination_applied is NULL when there is no destination.
+    origin_applied             BOOLEAN        NOT NULL,
+    origin_applied_at          TIMESTAMP,
+    destination_applied        BOOLEAN,
+    destination_applied_at     TIMESTAMP,
     operation_date             TIMESTAMP      NOT NULL,
-    applied_at                 TIMESTAMP,
     created_at                 TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at                 TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT ux_transactions_uuid UNIQUE (uuid),
@@ -170,8 +169,14 @@ CREATE TABLE transactions (
     CONSTRAINT ck_transactions_description_length CHECK (char_length(description) BETWEEN 3 AND 255),
     CONSTRAINT ck_transactions_distinct_accounts CHECK (
         destination_account_id IS NULL OR destination_account_id <> origin_account_id),
-    CONSTRAINT ck_transactions_applied_at CHECK (
-        (applied = TRUE AND applied_at IS NOT NULL) OR (applied = FALSE AND applied_at IS NULL)),
+    CONSTRAINT ck_transactions_origin_applied_at CHECK (
+        (origin_applied = TRUE AND origin_applied_at IS NOT NULL)
+        OR (origin_applied = FALSE AND origin_applied_at IS NULL)),
+    CONSTRAINT ck_transactions_destination_applied CHECK (
+        (destination_account_id IS NULL AND destination_applied IS NULL AND destination_applied_at IS NULL)
+        OR (destination_account_id IS NOT NULL AND (
+            (destination_applied = TRUE AND destination_applied_at IS NOT NULL)
+            OR (destination_applied = FALSE AND destination_applied_at IS NULL)))),
     CONSTRAINT ck_transactions_balances_non_negative CHECK (
         (origin_balance_before IS NULL OR origin_balance_before >= 0)
         AND (origin_balance_after IS NULL OR origin_balance_after >= 0)
@@ -180,7 +185,8 @@ CREATE TABLE transactions (
 );
 
 CREATE INDEX ix_transactions_user_operation_date ON transactions (user_id, operation_date);
-CREATE INDEX ix_transactions_user_applied_at ON transactions (user_id, applied_at);
+CREATE INDEX ix_transactions_user_origin_applied_at ON transactions (user_id, origin_applied_at);
+CREATE INDEX ix_transactions_user_destination_applied_at ON transactions (user_id, destination_applied_at);
 CREATE INDEX ix_transactions_origin_operation_date ON transactions (origin_account_id, operation_date);
 CREATE INDEX ix_transactions_destination_operation_date ON transactions (destination_account_id, operation_date);
 CREATE INDEX ix_transactions_user_type ON transactions (user_id, type);

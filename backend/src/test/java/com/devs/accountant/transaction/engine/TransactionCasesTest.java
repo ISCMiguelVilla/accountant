@@ -75,9 +75,6 @@ class TransactionCasesTest {
             assertThat(text(account.balance()))
                     .as("balance of %s", node.get("id"))
                     .isEqualTo(text(node, "balance"));
-            assertThat(text(account.pendingExpense()))
-                    .as("pendingExpense of %s", node.get("id"))
-                    .isEqualTo(text(node, "pendingExpense"));
             assertThat(account.status().name()).isEqualTo(node.get("status").asString());
         });
 
@@ -119,7 +116,6 @@ class TransactionCasesTest {
                 AccountType.valueOf(node.get("type").asString()),
                 node.has("status") ? AccountStatus.valueOf(node.get("status").asString()) : AccountStatus.ACTIVE,
                 decimal(node, "balance"),
-                decimal(node, "pendingExpense"),
                 decimal(node, "creditLimit"),
                 node.has("temporary") && node.get("temporary").asBoolean());
     }
@@ -133,9 +129,15 @@ class TransactionCasesTest {
                 node.has("destination") ? node.get("destination").asLong() : null,
                 decimal(node, "amount"),
                 decimal(node, "fee"),
-                !node.has("applied") || node.get("applied").asBoolean(),
+                flag(node, "originApplied"),
+                node.has("destination") ? flag(node, "destinationApplied") : null,
                 LocalDateTime.parse(
                         node.has("operationDate") ? node.get("operationDate").asString() : DEFAULT_DATE));
+    }
+
+    /** Applied flags default to true. */
+    private static boolean flag(JsonNode node, String field) {
+        return !node.has(field) || node.get(field).asBoolean();
     }
 
     private static BigDecimal decimal(JsonNode node, String field) {

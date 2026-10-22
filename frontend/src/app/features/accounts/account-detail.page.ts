@@ -92,12 +92,6 @@ import { AccountApiService } from './account-api.service';
                 {{ account.balance | money: account.currency.iso }}
               </dd>
             }
-            @if (account.pendingExpense !== null) {
-              <dt class="text-muted-color">{{ 'accounts.pendingExpense' | translate }}</dt>
-              <dd class="m-0 font-mono">
-                {{ account.pendingExpense | money: account.currency.iso }}
-              </dd>
-            }
             <dt class="text-muted-color">{{ 'accounts.currency' | translate }}</dt>
             <dd class="m-0">{{ account.currency.iso }} · {{ account.currency.name }}</dd>
             <dt class="text-muted-color">{{ 'accounts.parent' | translate }}</dt>

@@ -1,7 +1,6 @@
 package com.devs.accountant.account;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -83,14 +82,6 @@ class AccountServiceImplTest {
 
         assertThat(consumer.getBalance()).isNull();
         assertThat(storage.getBalance()).isEqualByComparingTo("0.00");
-        assertThat(storage.getPendingExpense()).isNull();
-    }
-
-    @Test
-    void debtorPendingExpenseDefaultsToTheBalance() {
-        Account debtor = created(request("Visa", AccountType.DEBTOR, null, new BigDecimal("5300")));
-
-        assertThat(debtor.getPendingExpense()).isEqualByComparingTo("5300.00");
     }
 
     @Test
@@ -130,8 +121,8 @@ class AccountServiceImplTest {
 
     @Test
     void temporaryIsOnlyForInvestmentAndBusiness() {
-        AccountRequest storage = new AccountRequest(
-                "Banco", AccountType.STORAGE, null, 1L, null, null, null, null, true, true, null, null);
+        AccountRequest storage =
+                new AccountRequest("Banco", AccountType.STORAGE, null, 1L, null, null, null, true, true, null, null);
 
         assertFieldError(() -> service.create(storage), "temporary", AccountServiceImpl.TEMPORARY_NOT_ALLOWED);
     }
@@ -139,8 +130,8 @@ class AccountServiceImplTest {
     @Test
     void disabledCurrencyCannotBeAssigned() {
         when(currencyRepository.findById(9L)).thenReturn(Optional.of(currency(9L, CurrencyStatus.DISABLED)));
-        AccountRequest request = new AccountRequest(
-                "Banco", AccountType.STORAGE, null, 9L, null, null, null, null, null, null, null, null);
+        AccountRequest request =
+                new AccountRequest("Banco", AccountType.STORAGE, null, 9L, null, null, null, null, null, null, null);
 
         assertFieldError(() -> service.create(request), "currencyId", AccountServiceImpl.CURRENCY_NOT_AVAILABLE);
     }
@@ -162,14 +153,12 @@ class AccountServiceImplTest {
     }
 
     @Test
-    void manualBalanceEditOverwritesAndClampsPendingExpense() {
+    void manualBalanceEditOverwritesTheBalance() {
         Account debtor = existing(1L, AccountType.DEBTOR, "5000");
-        debtor.setPendingExpense(new BigDecimal("4000.00"));
 
         service.update(1L, full(request("Visa", AccountType.DEBTOR, null, new BigDecimal("2500"))));
 
         assertThat(debtor.getBalance()).isEqualByComparingTo("2500.00");
-        assertThat(debtor.getPendingExpense()).isEqualByComparingTo("2500.00");
     }
 
     @Test
@@ -259,46 +248,20 @@ class AccountServiceImplTest {
     }
 
     @Test
-    void withTransactionsTheTypeMustBeAllowedByTheParentGroup() {
-        Account account = existing(1L, AccountType.INVESTMENT, "100");
-        Account storageParent = account(2L, AccountType.STORAGE, BigDecimal.TEN);
-        account.setParent(storageParent);
-        when(accountRepository.findByIdAndUserId(2L, USER)).thenReturn(Optional.of(storageParent));
-        when(accountRepository.hasTransactions(1L)).thenReturn(true);
-
-        // STORAGE accepts STORAGE, INVESTMENT and DEBTOR as sub-accounts...
-        assertThatCode(() -> service.update(1L, type(AccountType.DEBTOR))).doesNotThrowAnyException();
-        assertThat(account.getType()).isEqualTo(AccountType.DEBTOR);
-        // ...but not CREDITOR.
-        assertFieldError(
-                () -> service.update(1L, type(AccountType.CREDITOR)), "parentId", AccountServiceImpl.INVALID_PARENT);
-    }
-
-    @Test
-    void withTransactionsUnderAGroupAnyTransactionalTypeIsAllowedButNotGroup() {
+    void typeCannotChangeOnceTheAccountHasTransactions() {
         Account account = existing(1L, AccountType.STORAGE, "100");
-        Account group = account(2L, AccountType.GROUP, null);
-        account.setParent(group);
-        when(accountRepository.findByIdAndUserId(2L, USER)).thenReturn(Optional.of(group));
-        when(accountRepository.hasTransactions(1L)).thenReturn(true);
-
-        assertThatCode(() -> service.update(1L, type(AccountType.CREDITOR))).doesNotThrowAnyException();
-        assertThat(account.getType()).isEqualTo(AccountType.CREDITOR);
-        account.setBalance(BigDecimal.ZERO);
-        assertFieldError(
-                () -> service.update(1L, type(AccountType.GROUP)), "type", AccountServiceImpl.TYPE_CHANGE_NOT_ALLOWED);
-    }
-
-    @Test
-    void rootAccountWithTransactionsOnlySwitchesBetweenStorageAndInvestment() {
-        existing(1L, AccountType.STORAGE, "100");
         when(accountRepository.hasTransactions(1L)).thenReturn(true);
 
         assertFieldError(
-                () -> service.update(1L, type(AccountType.CREDITOR)),
+                () -> service.update(1L, type(AccountType.INVESTMENT)),
                 "type",
                 AccountServiceImpl.TYPE_CHANGE_NOT_ALLOWED);
-        assertThatCode(() -> service.update(1L, type(AccountType.INVESTMENT))).doesNotThrowAnyException();
+        assertThat(account.getType()).isEqualTo(AccountType.STORAGE);
+        // the rest of the account can still be edited
+        AccountUpdateRequest rename = new AccountUpdateRequest();
+        rename.setName("Banco principal");
+        service.update(1L, rename);
+        assertThat(account.getName()).isEqualTo("Banco principal");
     }
 
     @Test
@@ -389,7 +352,6 @@ class AccountServiceImplTest {
         update.setParentId(request.parentId());
         update.setCurrencyId(request.currencyId());
         update.setBalance(request.balance());
-        update.setPendingExpense(request.pendingExpense());
         update.setIcon(request.icon());
         update.setColor(request.color());
         update.setIncludeInBalance(request.includeInBalance());
@@ -406,7 +368,7 @@ class AccountServiceImplTest {
     }
 
     private static AccountRequest request(String name, AccountType type, Long parentId, BigDecimal balance) {
-        return new AccountRequest(name, type, parentId, 1L, balance, null, null, null, null, null, null, null);
+        return new AccountRequest(name, type, parentId, 1L, balance, null, null, null, null, null, null);
     }
 
     private void assertNotDeletable(Long id, String reason) {

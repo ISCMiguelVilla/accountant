@@ -25,11 +25,13 @@ import com.devs.accountant.transaction.dto.BatchRequest;
 import com.devs.accountant.transaction.dto.TransactionRequest;
 import com.devs.accountant.transaction.dto.TransactionRulesResponse;
 import com.devs.accountant.transaction.engine.DestinationMode;
+import com.devs.accountant.transaction.engine.Side;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -49,7 +51,7 @@ class TransactionServiceImplTest {
 
     private static final long USER = 1L;
     private static final ZoneId MX = ZoneId.of("America/Mexico_City");
-    private static final LocalDateTime NOW = LocalDateTime.of(2026, 10, 10, 9, 0);
+    private static final LocalDateTime NOW = LocalDateTime.of(2026, 10, 21, 9, 0);
 
     @Mock
     private TransactionRepository transactionRepository;
@@ -89,7 +91,7 @@ class TransactionServiceImplTest {
         when(accountRepository.findLastOperationDatesOf(anyCollection())).thenReturn(List.of());
         when(creditRepository.findByAccountIdIn(anyCollection())).thenReturn(List.of());
         when(accountRepository.lockForUpdate(any(), anyCollection())).thenAnswer(invocation -> {
-            var ids = invocation.<java.util.Collection<Long>>getArgument(1);
+            Collection<Long> ids = invocation.getArgument(1);
             return accounts.stream().filter(a -> ids.contains(a.getId())).toList();
         });
     }
@@ -97,11 +99,10 @@ class TransactionServiceImplTest {
     // -------------------------------------------------------------- batch
 
     @Test
-    void savesTheBatchWithSnapshotsAndUpdatesTheAccounts() {
+    void savesTheBatchWithSnapshotsAppliedFlagsAndUpdatesTheAccounts() {
         Account bank = account(1L, AccountType.STORAGE, "1000.00");
-        Account food = account(2L, AccountType.CONSUMER, null);
+        account(2L, AccountType.CONSUMER, null);
         Account visa = account(3L, AccountType.DEBTOR, "500.00");
-        visa.setPendingExpense(new BigDecimal("500.00"));
         credit(visa, "1000.00");
 
         var response = service.saveBatch(batch(
@@ -111,18 +112,35 @@ class TransactionServiceImplTest {
         assertThat(saved).hasSize(2);
         Transaction expense = saved.get(0);
         assertThat(expense.getOperationType()).isEqualTo(OperationType.SUBTRACTION);
+        assertThat(expense.getReportedAmount()).isEqualByComparingTo("200.00");
         assertThat(expense.getOriginBalanceBefore()).isEqualByComparingTo("1000.00");
         assertThat(expense.getOriginBalanceAfter()).isEqualByComparingTo("800.00");
-        assertThat(expense.getAppliedAt()).isEqualTo(expense.getOperationDate());
+        assertThat(expense.isOriginApplied()).isTrue();
+        assertThat(expense.getOriginAppliedAt()).isEqualTo(expense.getOperationDate());
+        assertThat(expense.getDestinationApplied()).isTrue();
         Transaction payment = saved.get(1);
+        assertThat(payment.getOperationType()).isEqualTo(OperationType.SUBTRACTION);
         assertThat(payment.getReportedAmount()).isEqualByComparingTo("300.00");
         assertThat(payment.getDestinationBalanceAfter()).isEqualByComparingTo("200.00");
         assertThat(saved).extracting(Transaction::getBatchUuid).containsOnly(response.batchUuid());
 
         assertThat(bank.getBalance()).isEqualByComparingTo("500.00");
         assertThat(visa.getBalance()).isEqualByComparingTo("200.00");
-        assertThat(visa.getPendingExpense()).isEqualByComparingTo("200.00");
-        assertThat(food.getBalance()).isNull();
+    }
+
+    @Test
+    void unappliedSidesAreStoredWithoutDate() {
+        account(1L, AccountType.STORAGE, "1000.00");
+        Account savings = account(2L, AccountType.STORAGE, "0.00");
+
+        service.saveBatch(batch(tx("TRANSFER", 1L, 2L, "300.00", NOW, true, false)));
+
+        Transaction transfer = savedTransactions().getFirst();
+        assertThat(transfer.isOriginApplied()).isTrue();
+        assertThat(transfer.getDestinationApplied()).isFalse();
+        assertThat(transfer.getDestinationAppliedAt()).isNull();
+        assertThat(transfer.isFullyApplied()).isFalse();
+        assertThat(savings.getBalance()).isEqualByComparingTo("0.00");
     }
 
     @Test
@@ -148,13 +166,14 @@ class TransactionServiceImplTest {
     @Test
     void validationErrorsOfTheEngineKeepTheField() {
         account(1L, AccountType.STORAGE, "100.00");
+        account(2L, AccountType.CONSUMER, null);
 
-        assertThatThrownBy(() -> service.saveBatch(batch(tx("TRANSFER", 1L, null, "10.00", NOW))))
+        assertThatThrownBy(() -> service.saveBatch(batch(tx("EXPENSE", 1L, 2L, "10.00", NOW, true, false))))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> {
                     BusinessException business = (BusinessException) ex;
                     assertThat(business.getCode()).isEqualTo(ErrorCode.VALIDATION_ERROR);
-                    assertThat(business.getErrors()).containsEntry("destinationAccountId", "DESTINATION_REQUIRED");
+                    assertThat(business.getErrors()).containsEntry("destinationApplied", "PENDING_NOT_ALLOWED");
                 });
     }
 
@@ -211,7 +230,7 @@ class TransactionServiceImplTest {
         account(2L, AccountType.CONSUMER, null);
         TransactionRequest first = tx("EXPENSE", 1L, 2L, "10.00", NOW);
         TransactionRequest copy = new TransactionRequest(
-                first.uuid(), first.type(), 1L, 2L, BigDecimal.ONE, null, "Copy", true, NOW, null);
+                first.uuid(), first.type(), 1L, 2L, BigDecimal.ONE, null, "Copy", null, null, NOW, null);
 
         assertThatThrownBy(() -> service.saveBatch(batch(first, copy)))
                 .isInstanceOf(BusinessException.class)
@@ -220,52 +239,44 @@ class TransactionServiceImplTest {
     }
 
     @Test
-    void temporaryAccountIsDisabledByItsProfit() {
+    void temporaryAccountIsDisabledOnlyWhenItsProfitLeavesItAtZero() {
         Account cetes = account(1L, AccountType.INVESTMENT, "500.00");
         cetes.setTemporary(true);
+        Account fund = account(3L, AccountType.INVESTMENT, "500.00");
+        fund.setTemporary(true);
         account(2L, AccountType.STORAGE, "0.00");
 
-        service.saveBatch(batch(tx("PROFIT", 1L, 2L, "500.00", NOW)));
+        service.saveBatch(batch(tx("PROFIT", 1L, 2L, "500.00", NOW), tx("PROFIT", 3L, 2L, "200.00", NOW)));
 
         assertThat(cetes.getStatus()).isEqualTo(AccountStatus.DISABLED);
+        assertThat(fund.getStatus()).isEqualTo(AccountStatus.ACTIVE);
     }
 
     @Test
     void executedScheduleAdvancesFromItsPreviousNextExecution() {
         Account bank = account(1L, AccountType.STORAGE, "1000.00");
         Account internet = account(2L, AccountType.CONSUMER, null);
-        Schedule schedule = new Schedule();
-        schedule.setId(5L);
-        schedule.setType(TransactionType.EXPENSE);
-        schedule.setOrigin(bank);
-        schedule.setDestination(internet);
-        schedule.setCronExpression("0 0 0 10 * *");
-        schedule.setNextExecution(LocalDateTime.of(2026, 10, 10, 0, 0));
-        when(scheduleRepository.findByUserIdAndIdInAndStatusNot(any(), anyCollection(), any()))
-                .thenReturn(List.of(schedule));
+        Schedule schedule = schedule(5L, TransactionType.EXPENSE, bank, internet);
+        schedule.setCronExpression("0 0 0 21 * *");
+        schedule.setNextExecution(LocalDateTime.of(2026, 10, 21, 0, 0));
         TransactionRequest base = tx("EXPENSE", 1L, 2L, "599.00", NOW);
         TransactionRequest scheduled = new TransactionRequest(
-                base.uuid(), base.type(), 1L, 2L, base.amount(), null, "Internet", true, NOW, 5L);
+                base.uuid(), base.type(), 1L, 2L, base.amount(), null, "Internet", null, null, NOW, 5L);
 
         service.saveBatch(batch(scheduled));
 
         assertThat(schedule.getLastExecution()).isEqualTo(NOW);
-        assertThat(schedule.getNextExecution()).isEqualTo(LocalDateTime.of(2026, 11, 10, 0, 0));
+        assertThat(schedule.getNextExecution()).isEqualTo(LocalDateTime.of(2026, 11, 21, 0, 0));
     }
 
     @Test
     void scheduleMustMatchTypeAndAccounts() {
         Account bank = account(1L, AccountType.STORAGE, "1000.00");
         account(2L, AccountType.CONSUMER, null);
-        Schedule schedule = new Schedule();
-        schedule.setId(5L);
-        schedule.setType(TransactionType.INCOME);
-        schedule.setOrigin(bank);
-        when(scheduleRepository.findByUserIdAndIdInAndStatusNot(any(), anyCollection(), any()))
-                .thenReturn(List.of(schedule));
+        schedule(5L, TransactionType.INCOME, bank, null);
         TransactionRequest base = tx("EXPENSE", 1L, 2L, "10.00", NOW);
         TransactionRequest scheduled = new TransactionRequest(
-                base.uuid(), base.type(), 1L, 2L, base.amount(), null, "Internet", true, NOW, 5L);
+                base.uuid(), base.type(), 1L, 2L, base.amount(), null, "Internet", null, null, NOW, 5L);
 
         assertThatThrownBy(() -> service.saveBatch(batch(scheduled)))
                 .isInstanceOf(BusinessException.class)
@@ -276,30 +287,50 @@ class TransactionServiceImplTest {
     // -------------------------------------------------------------- apply
 
     @Test
-    void applyingAPendingTransferCreditsTheDestinationAndOverwritesItsSnapshots() {
+    void applyingThePendingDestinationOfATransferCreditsItAndOverwritesItsSnapshots() {
         Account bank = account(1L, AccountType.STORAGE, "700.00");
         Account savings = account(2L, AccountType.STORAGE, "500.00");
-        Transaction pending = pending(10L, TransactionType.TRANSFER, bank, savings, "300.00", "5.00");
+        Transaction pending = stored(10L, TransactionType.TRANSFER, bank, savings, "300.00", "5.00", true, false);
         pending.setDestinationBalanceBefore(new BigDecimal("400.00"));
         pending.setDestinationBalanceAfter(new BigDecimal("400.00"));
 
-        service.apply(10L);
+        service.apply(10L, null);
 
         assertThat(savings.getBalance()).isEqualByComparingTo("795.00");
         assertThat(bank.getBalance()).isEqualByComparingTo("700.00");
         assertThat(pending.getDestinationBalanceBefore()).isEqualByComparingTo("500.00");
         assertThat(pending.getDestinationBalanceAfter()).isEqualByComparingTo("795.00");
-        assertThat(pending.isApplied()).isTrue();
-        assertThat(pending.getAppliedAt()).isEqualTo(NOW);
+        assertThat(pending.getDestinationApplied()).isTrue();
+        assertThat(pending.getDestinationAppliedAt()).isEqualTo(NOW);
+        assertThat(pending.getOriginAppliedAt()).isEqualTo(NOW.minusDays(3));
     }
 
     @Test
-    void applyingAPendingExpenseRevalidatesFunds() {
+    void sidesCanBeAppliedOneAtATime() {
+        Account cetes = account(1L, AccountType.INVESTMENT, "2000.00");
+        Account bank = account(2L, AccountType.STORAGE, "1000.00");
+        Transaction withdrawal = stored(10L, TransactionType.PROFIT, cetes, bank, "500.00", "0.00", false, false);
+
+        service.apply(10L, Side.DESTINATION);
+
+        assertThat(bank.getBalance()).isEqualByComparingTo("1500.00");
+        assertThat(cetes.getBalance()).isEqualByComparingTo("2000.00");
+        assertThat(withdrawal.isOriginApplied()).isFalse();
+        assertThat(withdrawal.getDestinationApplied()).isTrue();
+
+        service.apply(10L, Side.ORIGIN);
+
+        assertThat(cetes.getBalance()).isEqualByComparingTo("1500.00");
+        assertThat(withdrawal.isFullyApplied()).isTrue();
+    }
+
+    @Test
+    void applyingThePendingOriginOfAnExpenseRevalidatesFunds() {
         Account bank = account(1L, AccountType.STORAGE, "100.00");
         Account food = account(2L, AccountType.CONSUMER, null);
-        pending(10L, TransactionType.EXPENSE, bank, food, "150.00", "0.00");
+        stored(10L, TransactionType.EXPENSE, bank, food, "150.00", "0.00", false, true);
 
-        assertThatThrownBy(() -> service.apply(10L))
+        assertThatThrownBy(() -> service.apply(10L, null))
                 .isInstanceOf(BusinessException.class)
                 .extracting(ex -> ((BusinessException) ex).getCode())
                 .isEqualTo(ErrorCode.INSUFFICIENT_FUNDS);
@@ -307,41 +338,36 @@ class TransactionServiceImplTest {
     }
 
     @Test
-    void applyingAPendingCardPurchaseGrowsTheDebtWithinTheLimit() {
-        Account visa = account(1L, AccountType.DEBTOR, "100.00");
-        visa.setPendingExpense(new BigDecimal("100.00"));
-        credit(visa, "1000.00");
-        Account food = account(2L, AccountType.CONSUMER, null);
-        Transaction pending = pending(10L, TransactionType.EXPENSE, visa, food, "200.00", "0.00");
+    void applyingTheOriginOfATemporaryProfitDisablesItWhenItReachesZero() {
+        Account cetes = account(1L, AccountType.INVESTMENT, "800.00");
+        cetes.setTemporary(true);
+        Account bank = account(2L, AccountType.STORAGE, "1800.00");
+        stored(10L, TransactionType.PROFIT, cetes, bank, "800.00", "0.00", false, true);
 
-        service.apply(10L);
+        service.apply(10L, null);
 
-        assertThat(visa.getBalance()).isEqualByComparingTo("300.00");
-        assertThat(visa.getPendingExpense()).isEqualByComparingTo("300.00");
-        assertThat(pending.getOriginBalanceBefore()).isEqualByComparingTo("100.00");
-        assertThat(pending.getOriginBalanceAfter()).isEqualByComparingTo("300.00");
+        assertThat(cetes.getBalance()).isEqualByComparingTo("0.00");
+        assertThat(cetes.getStatus()).isEqualTo(AccountStatus.DISABLED);
     }
 
     @Test
     void applyIsIdempotent() {
         Account bank = account(1L, AccountType.STORAGE, "700.00");
         Account savings = account(2L, AccountType.STORAGE, "500.00");
-        Transaction done = pending(10L, TransactionType.TRANSFER, bank, savings, "300.00", "0.00");
-        done.setApplied(true);
+        stored(10L, TransactionType.TRANSFER, bank, savings, "300.00", "0.00", true, true);
 
-        service.apply(10L);
+        service.apply(10L, null);
 
         assertThat(savings.getBalance()).isEqualByComparingTo("500.00");
         verify(accountRepository, never()).lockForUpdate(any(), anyCollection());
     }
 
     @Test
-    void onlyPendableTypesCanBeApplied() {
-        Account supplier = account(1L, AccountType.SUPPLIER, null);
-        Account bank = account(2L, AccountType.STORAGE, "0.00");
-        pending(10L, TransactionType.INCOME, supplier, bank, "10.00", "0.00");
+    void theDestinationOfATransactionWithoutDestinationCannotBeApplied() {
+        Account bank = account(1L, AccountType.STORAGE, "700.00");
+        stored(10L, TransactionType.INTEREST, bank, null, "10.00", "0.00", false, null);
 
-        assertThatThrownBy(() -> service.apply(10L))
+        assertThatThrownBy(() -> service.apply(10L, Side.DESTINATION))
                 .isInstanceOf(BusinessException.class)
                 .extracting(ex -> ((BusinessException) ex).getCode())
                 .isEqualTo(ErrorCode.TRANSACTION_NOT_SUPPORTED);
@@ -353,34 +379,52 @@ class TransactionServiceImplTest {
     void rulesExposeTheMatrixWithVariants() {
         TransactionRulesResponse rules = service.rules();
 
+        var expense = rule(rules, TransactionType.EXPENSE);
+        assertThat(expense.origins()).containsExactly(AccountType.STORAGE);
+        assertThat(expense.originPendingAllowed()).isTrue();
+        assertThat(expense.destinationPendingAllowed()).isFalse();
+
         var payment = rule(rules, TransactionType.PAYMENT);
-        assertThat(payment.origins()).containsExactly(AccountType.STORAGE);
-        assertThat(payment.variants())
-                .singleElement()
-                .satisfies(v -> assertThat(v.operationType()).isNull());
+        assertThat(payment.variants()).singleElement().satisfies(v -> {
+            assertThat(v.operationType()).isEqualTo(OperationType.SUBTRACTION);
+            assertThat(v.feeSide()).isEqualTo(Side.ORIGIN);
+        });
+
+        var profit = rule(rules, TransactionType.PROFIT);
+        assertThat(profit.originPendingAllowed()).isTrue();
+        assertThat(profit.destinationPendingAllowed()).isTrue();
 
         var dividend = rule(rules, TransactionType.DIVIDEND);
         assertThat(dividend.destinationMode()).isEqualTo(DestinationMode.OPTIONAL);
-        assertThat(dividend.variants())
-                .anySatisfy(v -> assertThat(v.destination()).isNull());
+        assertThat(dividend.variants()).anySatisfy(v -> {
+            assertThat(v.destination()).isNull();
+            assertThat(v.feeSide()).isEqualTo(Side.ORIGIN);
+        });
 
         var debt = rule(rules, TransactionType.DEBT);
         assertThat(debt.variants())
                 .anySatisfy(v -> {
                     assertThat(v.destination()).isEqualTo(AccountType.CONSUMER);
+                    assertThat(v.operationType()).isEqualTo(OperationType.NEUTER);
                     assertThat(v.feeEnabled()).isFalse();
+                    assertThat(v.feeSide()).isNull();
                 })
                 .anySatisfy(v -> {
                     assertThat(v.destination()).isEqualTo(AccountType.STORAGE);
+                    assertThat(v.operationType()).isEqualTo(OperationType.ADDITION);
                     assertThat(v.feeMustBeBelowAmount()).isTrue();
                 });
 
-        var expense = rule(rules, TransactionType.EXPENSE);
-        assertThat(expense.pendingAllowed()).isTrue();
-        assertThat(expense.variants()).anySatisfy(v -> {
-            assertThat(v.origin()).isEqualTo(AccountType.DEBTOR);
-            assertThat(v.operationType()).isEqualTo(OperationType.NEUTER);
-        });
+        var interest = rule(rules, TransactionType.INTEREST);
+        assertThat(interest.variants())
+                .anySatisfy(v -> {
+                    assertThat(v.origin()).isEqualTo(AccountType.DEBTOR);
+                    assertThat(v.operationType()).isEqualTo(OperationType.NEUTER);
+                })
+                .anySatisfy(v -> {
+                    assertThat(v.origin()).isEqualTo(AccountType.STORAGE);
+                    assertThat(v.operationType()).isEqualTo(OperationType.SUBTRACTION);
+                });
     }
 
     // ------------------------------------------------------------ helpers
@@ -396,9 +440,6 @@ class TransactionServiceImplTest {
         account.setType(type);
         account.setName("Account " + id);
         account.setBalance(balance == null ? null : new BigDecimal(balance));
-        if (type == AccountType.DEBTOR && account.getPendingExpense() == null) {
-            account.setPendingExpense(BigDecimal.ZERO);
-        }
         account.setVersion(0L);
         accounts.add(account);
         return account;
@@ -411,8 +452,27 @@ class TransactionServiceImplTest {
         when(creditRepository.findByAccountIdIn(anyCollection())).thenReturn(List.of(credit));
     }
 
-    private Transaction pending(
-            Long id, TransactionType type, Account origin, Account destination, String amount, String fee) {
+    private Schedule schedule(Long id, TransactionType type, Account origin, Account destination) {
+        Schedule schedule = new Schedule();
+        schedule.setId(id);
+        schedule.setType(type);
+        schedule.setOrigin(origin);
+        schedule.setDestination(destination);
+        when(scheduleRepository.findByUserIdAndIdInAndStatusNot(any(), anyCollection(), any()))
+                .thenReturn(List.of(schedule));
+        return schedule;
+    }
+
+    private Transaction stored(
+            Long id,
+            TransactionType type,
+            Account origin,
+            Account destination,
+            String amount,
+            String fee,
+            boolean originApplied,
+            Boolean destinationApplied) {
+        LocalDateTime date = NOW.minusDays(3);
         Transaction tx = new Transaction();
         tx.setId(id);
         tx.setUuid(UUID.randomUUID());
@@ -421,14 +481,28 @@ class TransactionServiceImplTest {
         tx.setDestination(destination);
         tx.setAmount(new BigDecimal(amount));
         tx.setFee(new BigDecimal(fee));
-        tx.setApplied(false);
-        tx.setOperationDate(NOW.minusDays(3));
+        tx.setOperationDate(date);
+        tx.setOriginApplied(originApplied);
+        tx.setOriginAppliedAt(originApplied ? date : null);
+        tx.setDestinationApplied(destinationApplied);
+        tx.setDestinationAppliedAt(Boolean.TRUE.equals(destinationApplied) ? date : null);
         when(transactionRepository.findByIdAndUserId(id, USER)).thenReturn(Optional.of(tx));
         return tx;
     }
 
     private static TransactionRequest tx(
             String type, Long origin, Long destination, String amount, LocalDateTime date) {
+        return tx(type, origin, destination, amount, date, true, true);
+    }
+
+    private static TransactionRequest tx(
+            String type,
+            Long origin,
+            Long destination,
+            String amount,
+            LocalDateTime date,
+            boolean originApplied,
+            boolean destinationApplied) {
         return new TransactionRequest(
                 UUID.randomUUID(),
                 TransactionType.valueOf(type),
@@ -437,7 +511,8 @@ class TransactionServiceImplTest {
                 new BigDecimal(amount),
                 null,
                 type + " test",
-                true,
+                originApplied,
+                destinationApplied,
                 date,
                 null);
     }
@@ -449,7 +524,7 @@ class TransactionServiceImplTest {
     @SuppressWarnings("unchecked")
     private List<Transaction> savedTransactions() {
         ArgumentCaptor<List<Transaction>> captor = ArgumentCaptor.forClass(List.class);
-        verify(transactionRepository).saveAll(captor.capture());
+        verify(transactionRepository, org.mockito.Mockito.atLeastOnce()).saveAll(captor.capture());
         return captor.getValue();
     }
 }

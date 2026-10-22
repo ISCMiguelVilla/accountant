@@ -31,8 +31,3 @@ export const ALLOWED_CHILDREN: Record<AccountType, readonly AccountType[]> = {
 export function canBeTemporary(type: AccountType): boolean {
   return type === 'INVESTMENT' || type === 'BUSINESS';
 }
-
-/** Type changes allowed even with sub-accounts or transactions. */
-export function freeTypeChanges(type: AccountType): AccountType[] {
-  return type === 'STORAGE' || type === 'INVESTMENT' ? ['STORAGE', 'INVESTMENT'] : [type];
-}

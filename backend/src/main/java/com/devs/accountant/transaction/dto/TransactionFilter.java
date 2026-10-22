@@ -10,7 +10,8 @@ import org.springframework.format.annotation.DateTimeFormat;
 
 /**
  * Filters of {@code GET /transactions}. {@code accountId} matches origin or destination; dates apply to
- * {@code operation_date} (both ends inclusive, whole days).
+ * {@code operation_date} (both ends inclusive, whole days); {@code applied=true} = fully applied, {@code false} = some
+ * side still pending.
  */
 public record TransactionFilter(
         List<TransactionType> type,

@@ -152,7 +152,6 @@ Convenciones de BD: tablas `snake_case` plural, PK `id BIGINT GENERATED ALWAYS A
 | `name` | único por (`user_id`, `name`, `type`) entre cuentas no DELETED |
 | `type` | ver 5.1 |
 | `balance` | `NUMERIC(19,2)`; **NULL** para tipos sin saldo (GROUP, SUPPLIER, CONSUMER); `CHECK (balance >= 0)` |
-| `pending_expense` | `NUMERIC(19,2)`, solo DEBTOR (NULL en el resto): parte de la deuda que **se reconocerá como gasto cuando se pague** (ver 5.3). `CHECK (0 <= pending_expense <= balance)` |
 | `icon` (clase PrimeIcons), `color` (HEX mayúsculas) | |
 | `include_in_balance` | si cuenta para totales/resumen del home |
 | `is_temporary` | cuenta temporal (ver 5.1 regla 10) |
@@ -191,16 +190,16 @@ Cálculo de fechas:
 | `destination_account_id` | nullable según el tipo |
 | `amount` | > 0 |
 | `fee` | ≥ 0 (comisión/retención/cargo; ver 5.4) |
-| `reported_amount` | `NUMERIC(19,2)` ≥ 0: monto que cuenta en reportes como ingreso (ADDITION) o gasto (SUBTRACTION); 0 en NEUTER. Lo calcula el motor (ver 5.3) |
+| `reported_amount` | `NUMERIC(19,2)` ≥ 0: `amount` completo si es ADDITION o SUBTRACTION; 0 en NEUTER. Lo calcula el motor (ver 5.3). Las comisiones se reportan aparte |
 | `description` | 3–255 |
 | `origin_balance_before`, `origin_balance_after` | saldo del origen antes/después (NULL si la cuenta no tiene saldo) |
 | `destination_balance_before`, `destination_balance_after` | idem destino |
-| `applied` | si el efecto pendiente ya se reflejó (ver 5.5) |
 | `operation_date` | fecha del movimiento; determina el orden de cálculo |
-| `applied_at` | fecha en que se reflejó (= `operation_date` si nace aplicada; NULL si pendiente) |
+| `origin_applied`, `origin_applied_at` | si el monto ya se reflejó en el origen y cuándo (= `operation_date` si nace aplicado; NULL si pendiente) |
+| `destination_applied`, `destination_applied_at` | idem destino; NULL si no hay destino |
 | `created_at`, `updated_at` | |
 
-Índices: (`user_id`, `operation_date`), (`user_id`, `applied_at`), (`origin_account_id`, `operation_date`), (`destination_account_id`, `operation_date`), (`user_id`, `type`).
+Índices: (`user_id`, `operation_date`), (`user_id`, `origin_applied_at`), (`user_id`, `destination_applied_at`), (`origin_account_id`, `operation_date`), (`destination_account_id`, `operation_date`), (`user_id`, `type`).
 
 ### 4.6 `schedules` (transacciones programadas)
 `id, user_id, type, origin_account_id, destination_account_id (nullable según tipo), amount, fee, description, cron_expression (Spring, 6 campos), next_execution, last_execution, status (ACTIVE|DISABLED|DELETED), created_at, updated_at`.
@@ -231,17 +230,17 @@ Reglas de cuentas:
 3. El padre debe existir, pertenecer al usuario, no estar DELETED y aceptar el tipo hijo (tabla anterior).
 4. **Prohibido crear ciclos**: el nuevo padre no puede ser la propia cuenta ni ningún descendiente de **todo** su subárbol (hijos, nietos, etc.). Resolver con CTE recursiva en Postgres.
 5. **Cambio de tipo**:
+   - **Solo si la cuenta no tiene movimientos** (transacciones); sus movimientos no se recalculan.
    - El nuevo tipo debe seguir aceptando todas sus sub-cuentas no eliminadas.
-   - Si la cuenta **tiene movimientos** (transacciones), solo puede cambiar a los tipos permitidos como sub-cuenta por **el grupo al que pertenece** (su cuenta padre), nunca a GROUP. Una cuenta raíz (sin padre) con movimientos solo puede cambiar entre STORAGE ↔ INVESTMENT.
    - Para cambiar a un tipo sin saldo (GROUP, SUPPLIER, CONSUMER) el saldo debe ser 0.
    - Una cuenta con Credit debe seguir siendo DEBTOR.
    - **Actualización parcial**: `PUT /accounts/{id}` solo modifica las propiedades enviadas; las ausentes conservan su valor y el `id` nunca cambia. Un `null` explícito limpia `parentId`, `icon` o `color`.
-6. **Edición manual de saldo**: el formulario de cuentas permite modificar el saldo (≥ 0) aunque la cuenta ya tenga transacciones. Se sobrescribe directamente; **no genera transacción**. Al hacerlo se incrementa `version`, de modo que un borrador de lote abierto detecta el cambio (5.6 punto 10). En DEBTOR también se puede editar `pending_expense` (por defecto igual al saldo al crear la cuenta; si el saldo baja por debajo, se ajusta al nuevo saldo).
+6. **Edición manual de saldo**: el formulario de cuentas permite modificar el saldo (≥ 0) aunque la cuenta ya tenga transacciones. Se sobrescribe directamente; **no genera transacción**. Al hacerlo se incrementa `version`, de modo que un borrador de lote abierto detecta el cambio (5.6 punto 10).
 7. Cuentas usables en transacciones: ACTIVE y distintas de GROUP.
 8. Cuentas "en uso" (cards y resumen del home): ACTIVE, `include_in_balance = true`, `balance > 0`, tipo distinto de SUPPLIER, GROUP, CONSUMER.
 9. **Borrado lógico** (`status = DELETED`). No se puede borrar si `balance ≠ 0` (NULL cuenta como 0) o si tiene sub-cuentas no eliminadas. Las cuentas DISABLED pueden reactivarse manualmente.
-10. **Cuentas temporales** (`is_temporary`): solo para INVESTMENT y BUSINESS (los tipos que pueden ser origen de PROFIT). Cuando se registra un **PROFIT** cuyo origen es una cuenta temporal, al aplicar esa transacción la cuenta pasa automáticamente a **`DISABLED`** (la inversión cumplió su función). Consecuencias:
-    - En el editor de lotes se muestra un aviso antes de agregar la transacción ("esta cuenta temporal se deshabilitará"), indicando si queda saldo remanente.
+10. **Cuentas temporales** (`is_temporary`): solo para INVESTMENT y BUSINESS (los tipos que pueden ser origen de PROFIT). Cuando un **PROFIT** cuyo origen es una cuenta temporal deja su saldo **exactamente en 0** y el origen ya está aplicado, la cuenta pasa automáticamente a **`DISABLED`** (la inversión cumplió su función); si queda saldo, sigue activa. Consecuencias:
+    - En el editor de lotes se muestra un aviso antes de agregar la transacción ("esta cuenta temporal se deshabilitará") cuando el retiro la deja en 0.
     - Dentro del mismo lote, cualquier transacción posterior que use esa cuenta falla con `ACCOUNT_DISABLED`.
     - Para volver a usarla, se reactiva manualmente desde el formulario de cuentas.
 
@@ -250,78 +249,74 @@ Reglas de cuentas:
 | Tipo | Origen | Destino | Destino es |
 |---|---|---|---|
 | `INCOME` | SUPPLIER | STORAGE | obligatorio |
-| `EXPENSE` | STORAGE, **DEBTOR** | CONSUMER | obligatorio |
+| `EXPENSE` | STORAGE | CONSUMER | obligatorio |
 | `TRANSFER` | STORAGE | STORAGE | obligatorio |
 | `INVEST` | STORAGE, INVESTMENT | INVESTMENT, BUSINESS | obligatorio |
-| `PROFIT` | INVESTMENT, BUSINESS | STORAGE, INVESTMENT | obligatorio |
-| `DIVIDEND` | INVESTMENT, BUSINESS, STORAGE, CREDITOR | INVESTMENT, BUSINESS, STORAGE, CREDITOR | opcional |
+| `PROFIT` (retirar los recursos) | INVESTMENT, BUSINESS | STORAGE, INVESTMENT | obligatorio |
+| `DIVIDEND` (rendimiento) | INVESTMENT, BUSINESS, STORAGE, CREDITOR | INVESTMENT, BUSINESS, STORAGE, CREDITOR | opcional |
 | `INTEREST` | INVESTMENT, BUSINESS, STORAGE, DEBTOR | — | prohibido |
 | `BORROW` (prestar) | STORAGE | CREDITOR | obligatorio |
 | `COLLECTION` (cobrar préstamo) | CREDITOR | STORAGE | obligatorio |
-| `DEBT` (endeudarse) | DEBTOR | STORAGE, CONSUMER | obligatorio |
+| `DEBT` (endeudarse: préstamo en efectivo o compra a crédito) | DEBTOR | STORAGE, CONSUMER | obligatorio |
 | `PAYMENT` (pagar deuda) | STORAGE | DEBTOR | obligatorio |
 
-Reglas generales: origen ≠ destino; ambas cuentas ACTIVE y del usuario. Sin validación de moneda.
+Reglas generales: origen ≠ destino; ambas cuentas ACTIVE y del usuario. Sin validación de moneda. Las compras con tarjeta se registran como DEBT → CONSUMER (EXPENSE solo sale de STORAGE).
 
 ### 5.3 Tipo de operación y monto reportado
-Principio: **el gasto se reconoce cuando realmente sale dinero propio**. Comprar a crédito, endeudarse o generar intereses sobre una deuda **no** es gasto en ese momento; el gasto se reconoce al **pagar** la parte de la deuda que corresponde a consumo. Pedir dinero prestado en efectivo tampoco es gasto: el gasto aparece cuando ese efectivo se usa (EXPENSE desde STORAGE).
+Principio: **ingreso cuando el dinero entra a mis cuentas, gasto cuando sale**. Comprar a crédito o generar intereses sobre una deuda **no** es gasto en ese momento (el dinero sigue en mis cuentas); el gasto se reconoce al **pagar** la deuda (PAYMENT). Un préstamo en efectivo (DEBT → STORAGE) es ingreso porque el dinero entra a mis cuentas; así un gasto hecho con ese efectivo y el pago posterior del préstamo no se cuentan doble en el neto.
 
 | Tipo / variante | `operation_type` | `reported_amount` |
 |---|---|---|
-| INCOME | ADDITION | `A − F` |
-| DIVIDEND | ADDITION | `A − F` |
-| EXPENSE desde STORAGE | SUBTRACTION | `A + F` |
-| INTEREST sobre cuenta ≠ DEBTOR | SUBTRACTION | `A` |
-| PAYMENT | SUBTRACTION si `reported_amount > 0`, si no NEUTER | `F + min(A, pending_expense del DEBTOR antes del pago)` |
-| EXPENSE desde DEBTOR (compra con tarjeta) | NEUTER | 0 |
-| INTEREST sobre DEBTOR | NEUTER | 0 |
-| DEBT → CONSUMER (compra a crédito) | NEUTER | 0 |
-| DEBT → STORAGE (préstamo en efectivo) | NEUTER | 0 |
+| INCOME, DIVIDEND, DEBT → STORAGE | ADDITION | `A` |
+| EXPENSE, PAYMENT, INTEREST sobre cuenta ≠ DEBTOR | SUBTRACTION | `A` |
+| DEBT → CONSUMER, INTEREST sobre DEBTOR | NEUTER | 0 |
 | TRANSFER, INVEST, PROFIT, BORROW, COLLECTION | NEUTER | 0 |
 
-**`pending_expense` de las cuentas DEBTOR** (gasto por reconocer), lo mantiene el motor:
-- Aumenta con: EXPENSE desde DEBTOR (`+ (A + F)`), DEBT → CONSUMER (`+ A`), INTEREST sobre DEBTOR (`+ A`), DEBT → STORAGE (`+ F`, la comisión es un costo).
-- **No** aumenta con el principal de DEBT → STORAGE (préstamo en efectivo): ese dinero se reconocerá como gasto cuando se use desde STORAGE.
-- PAYMENT: se reconoce primero la parte de consumo: `recognized = min(A, pending_expense)`; `pending_expense −= recognized`; `reported_amount = F + recognized`. El resto de A solo reduce la deuda (NEUTER).
-- Se mantiene `0 ≤ pending_expense ≤ balance`.
+**Comisiones (`fee`)**: se guardan solo en el campo `fee` de la transacción. Los reportes de gastos las suman como **gasto** en un concepto "Comisiones" que **no existe en `accounts`** (se arma en memoria al generar el reporte), en la fecha de aplicación del lado que la paga: el origen en EXPENSE, PAYMENT y DIVIDEND sin destino; el destino en los demás.
 
-Los reportes (balance, doughnut, calendario, progreso) suman **`reported_amount`** de las transacciones aplicadas. El endpoint de reglas expone el `operation_type` por tipo y tipo de origen/destino (PAYMENT se resuelve en el motor).
+Los reportes (balance, doughnut, calendario, progreso) suman `reported_amount` (y las comisiones) de los lados aplicados: un ADDITION por la fecha `destination_applied_at` (o `origin_applied_at` si no hay destino) y un SUBTRACTION por `origin_applied_at`. El endpoint de reglas expone el `operation_type` y el lado que paga la comisión por tipo y tipo de origen/destino.
 
 ### 5.4 Efecto de cada transacción sobre los saldos
-Notación: `A` = amount, `F` = fee (0 si nulo). "Pendiente" = el efecto solo ocurre cuando `applied = true`. Toda validación de "no negativo" se hace sobre el saldo resultante.
+Notación: `A` = amount, `F` = fee (0 si nulo). Los saldos solo suman y restan montos. Cada lado cambia **solo cuando está aplicado**; toda validación de "no negativo" se hace sobre el saldo resultante, en el momento en que se aplica ese lado.
 
 | Tipo | Validaciones | Origen | Destino |
 |---|---|---|---|
 | INCOME | `F < A` | (sin saldo) | `+ (A − F)` |
-| EXPENSE (desde STORAGE) | origen ≥ A + F → `INSUFFICIENT_FUNDS` | `− (A + F)` **pendiente** | (sin saldo) |
-| EXPENSE (desde DEBTOR) | si tiene Credit: saldo + A + F ≤ límite → `CREDIT_LIMIT_EXCEEDED` | `+ (A + F)` **pendiente** (la deuda crece) | (sin saldo) |
-| TRANSFER / INVEST / PROFIT | origen ≥ A → `INSUFFICIENT_FUNDS`; `F < A` | `− A` (inmediato) | `+ (A − F)` **pendiente** (dinero en tránsito) |
-| DIVIDEND | `F < A` | sin destino: `+ (A − F)` | con destino: `+ (A − F)` |
+| EXPENSE | origen ≥ A + F → `INSUFFICIENT_FUNDS` | `− (A + F)` | (sin saldo) |
+| TRANSFER / INVEST / PROFIT | origen ≥ A → `INSUFFICIENT_FUNDS`; `F < A` | `− A` | `+ (A − F)` |
+| DIVIDEND | `F < A` | sin destino: `+ (A − F)` | con destino: `+ (A − F)` (el origen no cambia) |
 | INTEREST (origen ≠ DEBTOR) | origen ≥ A → `INSUFFICIENT_FUNDS`; F deshabilitado | `− A` | — |
 | INTEREST (origen DEBTOR) | si tiene Credit: saldo + A ≤ límite → `CREDIT_LIMIT_EXCEEDED`; F deshabilitado | `+ A` (la deuda crece) | — |
 | BORROW | origen ≥ A → `INSUFFICIENT_FUNDS`; F deshabilitado | `− A` | `+ A` |
 | COLLECTION | A ≤ saldo del CREDITOR → `SENSELESS_TRANSACTION`; F deshabilitado | `− A` | `+ A` |
 | DEBT → STORAGE | si tiene Credit: saldo + A ≤ límite → `CREDIT_LIMIT_EXCEEDED`; `F < A` | `+ A` | `+ (A − F)` |
-| DEBT → CONSUMER | si tiene Credit: saldo + A ≤ límite → `CREDIT_LIMIT_EXCEEDED`; F deshabilitado | `+ A` | **sin efecto** (CONSUMER no tiene saldo; igual en front y back) |
-| PAYMENT | origen ≥ A + F → `INSUFFICIENT_FUNDS`; A ≤ saldo del DEBTOR → `SENSELESS_TRANSACTION` | `− (A + F)` (F = comisión pagada) | `− A` (solo lo abonado reduce la deuda) |
+| DEBT → CONSUMER | si tiene Credit: saldo + A ≤ límite → `CREDIT_LIMIT_EXCEEDED`; F deshabilitado | `+ A` | **sin efecto** (CONSUMER no tiene saldo) |
+| PAYMENT | origen ≥ A + F → `INSUFFICIENT_FUNDS`; A ≤ saldo del DEBTOR → `SENSELESS_TRANSACTION` | `− (A + F)` (la comisión la paga el origen) | `− A` |
 
-Además, en cada transacción que involucra un DEBTOR se actualiza `pending_expense` según 5.3.
+**Lados que pueden quedar sin aplicar** (`origin_applied` / `destination_applied` = false):
+
+| Tipo | Origen | Destino |
+|---|---|---|
+| EXPENSE | sí | — |
+| TRANSFER, INVEST, PROFIT | sí | sí |
+| DIVIDEND (con destino) | — | sí |
+| Los demás | no (siempre aplicado) | no (siempre aplicado) |
+
+Ejemplo: un retiro de una SOFIPO se solicita (PROFIT con ambos lados sin aplicar, los saldos no cambian) y horas después, al reflejarse, se aplica: el origen resta y el destino suma.
 
 Campos del formulario según tipo (todo esto viene de `GET /transactions/rules`):
 - `fee` habilitado solo donde la tabla lo usa (deshabilitado y = 0 en INTEREST, BORROW, COLLECTION, DEBT → CONSUMER).
-- **Pendiente permitido** solo en EXPENSE (ambos orígenes), TRANSFER, INVEST y PROFIT. En el resto `applied = true` forzado y `applied_at = operation_date` (incluye **PAYMENT, que siempre se aplica en el momento**).
+- Controles **"ya se reflejó en el origen"** y **"ya se reflejó en el destino"**, habilitados solo en los lados de la tabla anterior; en el resto quedan forzados a aplicado.
 - Descripción autogenerada `"<tipo traducido> <origen> → <destino>"` mientras el usuario no la edite.
 - Botón "usar saldo total" que copia el saldo disponible del origen al monto.
-- **Vista previa de saldos en vivo**: conforme se modifica el monto (o fee, tipo, cuentas), el formulario muestra para el **origen** y para el **destino** (si aplica y tiene saldo) el **saldo original** (saldo proyectado justo antes de esta transacción, considerando las anteriores del lote) y el **saldo después de la transacción**, resaltando en rojo si el resultado es inválido y mostrando el error de validación traducido. En DEBTOR con Credit se muestra también el crédito disponible después.
+- **Vista previa de saldos en vivo**: conforme se modifica el monto (o fee, tipo, cuentas, lados aplicados), el formulario muestra para el **origen** y para el **destino** (si aplica y tiene saldo) el **saldo original** (saldo proyectado justo antes de esta transacción, considerando las anteriores del lote) y el **saldo después de la transacción**, resaltando en rojo si el resultado es inválido y mostrando el error de validación traducido. En DEBTOR con Credit se muestra también el crédito disponible después.
 
-### 5.5 Aplicación posterior de transacciones pendientes
-`PATCH /transactions/{id}/apply` (idempotente: si ya está aplicada devuelve sin cambios):
-- TRANSFER / INVEST / PROFIT: destino `+ (A − F)`.
-- EXPENSE desde STORAGE: revalida fondos y origen `− (A + F)`.
-- EXPENSE desde DEBTOR: revalida límite, origen `+ (A + F)` y `pending_expense += A + F`.
-- Cualquier otro caso → `TRANSACTION_NOT_SUPPORTED`.
-- Se registra `applied_at = now` y se **sobrescriben** los snapshots (`*_balance_before/after`) de la cuenta afectada con los valores de ese momento. No hay columnas adicionales.
-- Al crear una transacción pendiente, el lado aún no afectado guarda `before = after = saldo actual`.
+### 5.5 Aplicación posterior de lados pendientes
+`PATCH /transactions/{id}/apply` aplica todos los lados pendientes; `?side=ORIGIN|DESTINATION` aplica solo uno (idempotente: un lado ya aplicado no cambia):
+- Origen: efecto de la tabla 5.4, revalidando fondos o límite de crédito; regla de cuenta temporal (PROFIT que la deja en 0 la deshabilita).
+- Destino: efecto de la tabla 5.4. Pedir el destino de una transacción sin destino → `TRANSACTION_NOT_SUPPORTED`.
+- Se registra `origin_applied_at` / `destination_applied_at = now` y se **sobrescriben** los snapshots (`*_balance_before/after`) del lado aplicado con los valores de ese momento.
+- Al crear una transacción con un lado sin aplicar, ese lado guarda `before = after = saldo actual`.
 
 ### 5.6 Motor de cálculo y guardado por lotes (núcleo de la app)
 El usuario captura **un lote de transacciones** en un editor local antes de guardarlas. Como las transacciones persistidas no se editan ni anulan, **el resumen previo al guardado es el control principal** y debe ser claro y completo.
@@ -329,17 +324,17 @@ El usuario captura **un lote de transacciones** en un editor local antes de guar
 **Restricción de fechas:** `operation_date` de una transacción **no puede ser anterior a la última transacción ya persistida** de cada cuenta involucrada (origen y destino) → `DATE_BEFORE_LAST_TRANSACTION`. Así el recálculo siempre parte del saldo actual y nunca se reescribe el historial. El endpoint de cuentas usables devuelve `lastOperationDate` por cuenta y el datepicker del formulario aplica ese mínimo.
 
 **Frontend (`TransactionEngine` puro en TS + `TransactionDraftStore`):**
-1. Al abrir el editor se cargan: reglas (`/transactions/rules`), cuentas usables (snapshot "prístino" con `balance`, `pendingExpense`, `credit`, `version` y `lastOperationDate`) y programadas aplicables.
+1. Al abrir el editor se cargan: reglas (`/transactions/rules`), cuentas usables (snapshot "prístino" con `balance`, `credit`, `version` y `lastOperationDate`) y programadas aplicables.
 2. El borrador se guarda en `localStorage` con clave por usuario (`accountant:draft:<userId>`), incluyendo versión de esquema, fecha de creación y `version` de cada cuenta.
-3. **Cada alta, edición o eliminación** de una transacción del borrador **recalcula todo desde cero**: clona las cuentas prístinas, ordena por `operation_date` ascendente (desempate estable por orden de captura) y aplica una por una (5.3 y 5.4, en centavos). Una edición o borrado intermedio revalida todas las posteriores.
+3. **Cada alta, edición o eliminación** de una transacción del borrador **recalcula todo desde cero**: clona las cuentas prístinas, ordena por `operation_date` ascendente (desempate estable por orden de captura) y aplica una por una (5.3 y 5.4, en centavos, respetando los lados aplicados). Una edición o borrado intermedio revalida todas las posteriores.
 4. Si alguna falla, la operación se rechaza, el borrador queda como estaba y se muestra un toast persistente con el error traducido e indicando la transacción que falló.
 5. Las cuentas proyectadas resultantes alimentan los selectores (saldo mostrado = proyectado).
 6. Selectores de origen/destino filtrados por la matriz de reglas, excluyendo la cuenta elegida en el otro selector y las cuentas DISABLED (incluidas las temporales deshabilitadas dentro del propio lote).
 7. La tabla del lote muestra por transacción: fecha, tipo, origen, destino, monto, fee, aplicada, monto reportado y snapshots `before → after` de cada cuenta.
 8. **"Revisar" (resumen de movimientos)** abre un diálogo con:
-   - Cuentas afectadas (excluye SUPPLIER y CONSUMER): saldo actual → saldo proyectado y diferencia; en DEBTOR también crédito disponible y gasto por reconocer.
-   - Totales del lote: ingresos, gastos y neto (por `reported_amount`), número de transacciones y cuántas quedan pendientes.
-   - Avisos: cuentas temporales que se deshabilitarán, transacciones pendientes, programadas incluidas.
+   - Cuentas afectadas (excluye SUPPLIER y CONSUMER): saldo actual → saldo proyectado y diferencia; en DEBTOR también crédito disponible.
+   - Totales del lote: ingresos, gastos y neto (por `reported_amount`), comisiones, número de transacciones y cuántas tienen lados sin aplicar.
+   - Avisos: cuentas temporales que se deshabilitarán, transacciones con lados sin aplicar, programadas incluidas.
    - Botón "Guardar" solo desde este diálogo.
 9. "Guardar" envía el lote a `POST /transactions/batch`. Al éxito se limpia el borrador. "Vaciar" borra el borrador con confirmación.
 10. Al recargar la página se restaura y recalcula el borrador. Si alguna cuenta cambió de `version` (otra transacción o edición manual de saldo), se avisa que los saldos base cambiaron y se recalcula contra los nuevos (puede fallar y se informa).
@@ -349,7 +344,7 @@ El usuario captura **un lote de transacciones** en un editor local antes de guar
 1. `POST /transactions/batch` en **una sola transacción de BD**.
 2. Valida estructura (Bean Validation), matriz de reglas, campos habilitados y restricción de fechas.
 3. Carga las cuentas involucradas con **lock pesimista** (`PESSIMISTIC_WRITE`, en orden de id para evitar deadlocks), verifica que existan, sean del usuario y estén ACTIVE; `@Version` en cuentas para detectar ediciones concurrentes (`CONFLICT`).
-4. Ordena por `operation_date` y aplica cada transacción con el motor, guardando `*_balance_before/after`, `reported_amount`, `operation_type`, actualizando `pending_expense` y aplicando la regla de cuentas temporales.
+4. Ordena por `operation_date` y aplica cada transacción con el motor, guardando `*_balance_before/after`, `reported_amount`, `operation_type`, los lados aplicados con sus fechas y aplicando la regla de cuentas temporales.
 5. Si cualquier transacción falla → rollback total y error con `transactionUuid` e índice de la que falló.
 6. Asigna `batch_uuid`, persiste transacciones y cuentas.
 7. Para cada transacción con `schedule_id`: `last_execution = operation_date`, `next_execution = cron.next(next_execution anterior)`.
@@ -369,7 +364,7 @@ El usuario captura **un lote de transacciones** en un editor local antes de guar
 ## 6. Pantalla principal (Home) — dos tabs (`p-tabs`)
 
 ### 6.1 Tab "Resumen"
-Todos los reportes usan `applied_at` (las pendientes no cuentan hasta aplicarse), suman `reported_amount`, solo del usuario, con consultas en Postgres (`date_trunc`, `generate_series`).
+Todos los reportes usan la fecha de aplicación del lado que cuenta (5.3; lo no aplicado no cuenta), suman `reported_amount` y las comisiones como gasto, solo del usuario, con consultas en Postgres (`date_trunc`, `generate_series`).
 
 1. **Gráfica de balance (estado de resultados)**: barras de ingresos (ADDITION) y egresos (SUBTRACTION) + línea de neto (ingresos − egresos) por periodo. Excluye NEUTER.
    - Dimensiones y ventana: YEAR (2–4, default 2), MONTH (3–12, default 6), WEEK (4–12, default 4), DAY (7–15, default 7).
@@ -388,7 +383,7 @@ Todos los reportes usan `applied_at` (las pendientes no cuentan hasta aplicarse)
 #### 6.1.4 Metas (`Goal`) — flujo simple
 - Una meta por usuario y año: `target_amount` = cuánto se quiere ahorrar (neto) en el año. CRUD mínimo desde un diálogo en el propio widget (`GET /goals`, `PUT /goals/{year}`, `DELETE /goals/{year}`).
 - `GET /dashboard/progress?years=3` devuelve por año (año actual y anteriores):
-  - `net` mensual = ADDITION − SUBTRACTION (por `applied_at`, sobre `reported_amount`).
+  - `net` mensual = ADDITION − SUBTRACTION − comisiones (por fecha de aplicación, sobre `reported_amount` y `fee`).
   - `accumulated` = suma de netos del año; `percentage = accumulated / target × 100` (tope 100, mínimo 0).
   - Meta mensual = `target / 12`. Estado del mes: `SUCCESS` si net ≥ meta mensual; `WARNING` si 0 ≤ net < meta mensual; `DANGER` si net < 0.
   - Estado del año: esperado a la fecha = `target × meses transcurridos / 12` (12 en años pasados). `SUCCESS` si accumulated ≥ esperado; `WARNING` si ≥ 50 % del esperado; `DANGER` en otro caso.
@@ -398,8 +393,8 @@ Todos los reportes usan `applied_at` (las pendientes no cuentan hasta aplicarse)
 ### 6.2 Tab "Calendario"
 - Vista mensual con grid de 7 columnas, **semana inicia en lunes**, navegación mes anterior/siguiente/hoy. Componente propio con CSS grid/Tailwind + componentes PrimeNG (`p-tag`, `p-badge`, `p-popover`/`p-drawer`). Nombres de días y meses según idioma.
 - Por día:
-  - Ingresos en verde `+$ 1,000.00` = suma de `reported_amount` ADDITION con `applied_at` ese día.
-  - Egresos en rojo `-$ 1,000.00` = suma de `reported_amount` SUBTRACTION con `applied_at` ese día.
+  - Ingresos en verde `+$ 1,000.00` = suma de `reported_amount` ADDITION aplicados ese día.
+  - Egresos en rojo `-$ 1,000.00` = suma de `reported_amount` SUBTRACTION y de comisiones aplicados ese día.
   - **No se incluyen NEUTER.**
   - Marcas de **fecha de corte** y **fecha límite de pago** de cada cuenta con Credit (fechas guardadas + ocurrencias de sus crons para meses posteriores); en la fecha de pago se muestra el saldo actual de la deuda.
   - **Transacciones programadas futuras** (ocurrencias del cron dentro del rango, solo ACTIVE y desde hoy) con monto y descripción, con estilo distinto (borde punteado / atenuado).
@@ -438,7 +433,7 @@ Filtros mínimos:
 POST   /auth/sign-in                 POST /auth/sign-up
 
 GET    /accounts                     (paginado)
-GET    /accounts/options             (lista ligera para selects: usables, con balance, pendingExpense, credit, version, lastOperationDate)
+GET    /accounts/options             (lista ligera para selects: usables, con balance, credit, version, lastOperationDate)
 GET    /accounts/in-use              (cards del home)
 GET    /accounts/{id}                (incluye credit, availableCredit, hasChildren, hasTransactions)
 GET    /accounts/{id}/transactions   (paginado, default size=10, sort=operationDate,desc)
@@ -484,9 +479,9 @@ El front traduce por `code` + `params` (los mismos códigos que lanza el motor T
 ---
 
 ## 8. Otras pantallas
-- **Cuentas**: listado lazy/filtrable/ordenable (ícono, nombre, tipo con tag, padre, moneda, saldo, temporal, estado). Formulario: nombre, tipo, padre (filtrado por tipos válidos y sin ciclos), moneda, **saldo editable** (oculto si el tipo no tiene saldo; al editar una cuenta con transacciones muestra un aviso de que el cambio sobrescribe el saldo sin generar transacción), gasto por reconocer (solo DEBTOR), ícono (selector PrimeIcons), color, incluir en balance, temporal (solo INVESTMENT/BUSINESS), estado; sección **Crédito** solo para DEBTOR (línea, cron de corte, cron de pago, con vista de próximas fechas).
-- **Detalle de cuenta**: datos, crédito (línea, usado, disponible, `cut_off_day`, `payment_due_day`, gasto por reconocer), sub-cuentas y **tabla de las últimas transacciones** donde la cuenta es origen o destino: fecha, tipo, contraparte, monto con signo según el efecto en esta cuenta, saldo antes → después, aplicada; acción "aplicar" en pendientes; enlace "ver todas" (listado de transacciones con `accountId`).
-- **Transacciones**: listado lazy con filtros; acción "aplicar" en pendientes; botón "Nuevo lote" → editor (5.6).
+- **Cuentas**: listado lazy/filtrable/ordenable (ícono, nombre, tipo con tag, padre, moneda, saldo, temporal, estado). Formulario: nombre, tipo, padre (filtrado por tipos válidos y sin ciclos), moneda, **saldo editable** (oculto si el tipo no tiene saldo; al editar una cuenta con transacciones muestra un aviso de que el cambio sobrescribe el saldo sin generar transacción), ícono (selector PrimeIcons), color, incluir en balance, temporal (solo INVESTMENT/BUSINESS), estado; sección **Crédito** solo para DEBTOR (línea, cron de corte, cron de pago, con vista de próximas fechas).
+- **Detalle de cuenta**: datos, crédito (línea, usado, disponible, `cut_off_day`, `payment_due_day`), sub-cuentas y **tabla de las últimas transacciones** donde la cuenta es origen o destino: fecha, tipo, contraparte, monto con signo según el efecto en esta cuenta, saldo antes → después, aplicada; acción "aplicar" en pendientes; enlace "ver todas" (listado de transacciones con `accountId`).
+- **Transacciones**: listado lazy con filtros; acción "aplicar" en transacciones con lados sin aplicar; botón "Nuevo lote" → editor (5.6).
 - **Programadas**: listado lazy + formulario con verificador de cron y próximas ejecuciones.
 - **Admin** (ADMIN): usuarios (sin crear otro admin) y monedas.
 - **Auth**: sign-in, sign-up, sign-out; guard de rutas; layout con topbar (selector de idioma, modo claro/oscuro, usuario), sidebar con menú y breadcrumb.
@@ -521,7 +516,7 @@ El front traduce por `code` + `params` (los mismos códigos que lanza el motor T
 ---
 
 ## 12. Pruebas mínimas
-- `docs/transaction-cases.json`: casos `{ name, accounts:[...], transactions:[...], expected: { accounts:[{ id, balance, pendingExpense, status }], transactions:[{ uuid, operationType, reportedAmount, originBalanceBefore, originBalanceAfter, ... }] } | { error: { code, transactionUuid } } }` que cubran **cada tipo de transacción y variante de origen/destino**, cada validación (fondos, límite de crédito, senseless, no negativos, fee ≥ amount), aplicada vs pendiente, destino opcional, cuenta temporal deshabilitada por PROFIT (y uso posterior en el lote), reconocimiento de gasto en PAYMENT (deuda solo de consumo, solo de efectivo y mixta), recálculo tras editar/eliminar una transacción intermedia y redondeo de centavos.
+- `docs/transaction-cases.json`: casos `{ name, accounts:[...], transactions:[...], expected: { accounts:[{ id, balance, status }], transactions:[{ uuid, operationType, reportedAmount, originBalanceBefore, originBalanceAfter, ... }] } | { error: { code, transactionUuid } } }` que cubran **cada tipo de transacción y variante de origen/destino**, cada validación (fondos, límite de crédito, senseless, no negativos, fee ≥ amount), aplicada vs pendiente, destino opcional, cuenta temporal deshabilitada por PROFIT (y uso posterior en el lote), lados aplicados / sin aplicar (origen, destino o ambos), clasificación de DEBT (efectivo = ADDITION, compra = NEUTER) y PAYMENT, recálculo tras editar/eliminar una transacción intermedia y redondeo de centavos.
 - Backend: test parametrizado del `TransactionEngine` leyendo ese JSON; tests de servicio (Mockito) de batch (rollback total, snapshots, avance de programadas, restricción de fechas), apply, edición manual de saldo, reglas de cuentas (ciclos en todo el subárbol, cambio de tipo, borrado, único admin), cálculo y actualización periódica de `cut_off_day` / `payment_due_day`, expansión de cron en calendario, progreso de metas.
 - Frontend: test del `TransactionEngine` TS con el mismo JSON; tests del `TransactionDraftStore` (persistencia, restauración, cambio de `version`); test de paridad de claves i18n.
 
@@ -531,7 +526,7 @@ El front traduce por `code` + `params` (los mismos códigos que lanza el motor T
 1. **Andamiaje**: Maven + Angular + PrimeNG (tema Aura/noir/slate) + Tailwind + i18n + layout, perfiles dev/prod, Flyway V1, proxy dev, Spotless/ESLint/Prettier, README.
 2. **Auth + admin** (usuarios con único admin, monedas) + utilidades genéricas de paginado/filtro/orden (back) y tabla lazy sincronizada con URL (front).
 3. **Cuentas + Crédito** (CRUD, jerarquía, ciclos, borrado lógico, edición de saldo, job de fechas de crédito, detalle sin transacciones aún).
-4. **Motor de transacciones backend**: reglas, batch, apply, temporales, `pending_expense` / `reported_amount` + tests con `transaction-cases.json`.
+4. **Motor de transacciones backend**: reglas, batch, apply, temporales, lados aplicados, `reported_amount` + tests con `transaction-cases.json`.
 5. **Editor de lotes frontend** (motor TS, borrador local, vista previa de saldos, resumen de movimientos, guardado) + listado de transacciones + últimas transacciones en detalle de cuenta.
 6. **Programadas**.
 7. **Home – tab Resumen** (balance, doughnut por mes, cards, árbol, metas/progreso).
@@ -541,7 +536,7 @@ El front traduce por `code` + `params` (los mismos códigos que lanza el motor T
 ---
 
 ## 14. Problemas del sistema anterior y cómo se resuelven en v2
-- **D1** – `EXPENSE` desde DEBTOR (compra con tarjeta) **se acepta** en back y front: la deuda crece `+ (A + F)` (validando el límite de crédito) en lugar de exigir fondos.
+- **D1** – Las compras con tarjeta se registran como `DEBT → CONSUMER` (la deuda crece `+ A`, validando el límite de crédito); `EXPENSE` solo sale de STORAGE.
 - **D2** – `DEBT → CONSUMER` **no** modifica la cuenta CONSUMER (no tiene saldo); comportamiento idéntico en front y back.
 - **D3** – `PAYMENT`: el fee se resta solo del origen (`− (A + F)`); la deuda se reduce solo por lo abonado (`− A`).
 - **D4** – Todos los reportes filtran por usuario y usan funciones de Postgres.

@@ -33,7 +33,6 @@ export interface Account {
   type: AccountType;
   status: AccountStatus;
   balance: number | null;
-  pendingExpense: number | null;
   currency: CurrencyOption;
   parent: AccountRef | null;
   icon: string | null;
@@ -59,7 +58,6 @@ export interface AccountRequest {
   parentId: number | null;
   currencyId: number;
   balance: number | null;
-  pendingExpense: number | null;
   icon: string | null;
   color: string | null;
   includeInBalance: boolean;

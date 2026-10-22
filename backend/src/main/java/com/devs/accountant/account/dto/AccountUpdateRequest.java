@@ -35,10 +35,6 @@ public class AccountUpdateRequest {
     @Digits(integer = 17, fraction = 2)
     private BigDecimal balance;
 
-    @PositiveOrZero
-    @Digits(integer = 17, fraction = 2)
-    private BigDecimal pendingExpense;
-
     @Pattern(regexp = "^pi pi-[a-z0-9-]+$")
     private String icon;
 
@@ -78,11 +74,6 @@ public class AccountUpdateRequest {
     public void setBalance(BigDecimal balance) {
         this.balance = balance;
         present.add("balance");
-    }
-
-    public void setPendingExpense(BigDecimal pendingExpense) {
-        this.pendingExpense = pendingExpense;
-        present.add("pendingExpense");
     }
 
     public void setIcon(String icon) {

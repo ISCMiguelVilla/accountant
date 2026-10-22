@@ -51,8 +51,8 @@ BEGIN
         (uid, mxn, gastos, 'Servicios', 'CONSUMER', 'pi pi-bolt', '#CA8A04');
 
     -- Debtor with credit line (dates in the past: the startup job moves them to the next occurrence)
-    INSERT INTO accounts (user_id, currency_id, parent_account_id, name, type, balance, pending_expense, icon, color)
-    VALUES (uid, mxn, nomina, 'Tarjeta Visa', 'DEBTOR', 5300.00, 5300.00, 'pi pi-credit-card', '#7C3AED')
+    INSERT INTO accounts (user_id, currency_id, parent_account_id, name, type, balance, icon, color)
+    VALUES (uid, mxn, nomina, 'Tarjeta Visa', 'DEBTOR', 5300.00, 'pi pi-credit-card', '#7C3AED')
     RETURNING id INTO visa;
     INSERT INTO credits (account_id, credit_limit, cut_off_cron, payment_due_cron, cut_off_day, payment_due_day)
     VALUES (visa, 30000.00, '0 0 0 15 * *', '0 0 0 5 * *', CURRENT_DATE - 1, CURRENT_DATE - 1);

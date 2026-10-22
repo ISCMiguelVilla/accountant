@@ -13,7 +13,6 @@ public record AccountResponse(
         AccountType type,
         AccountStatus status,
         BigDecimal balance,
-        BigDecimal pendingExpense,
         CurrencyOption currency,
         AccountRef parent,
         String icon,

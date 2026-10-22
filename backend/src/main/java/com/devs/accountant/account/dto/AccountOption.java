@@ -18,7 +18,6 @@ public record AccountOption(
         AccountStatus status,
         Long parentId,
         BigDecimal balance,
-        BigDecimal pendingExpense,
         CurrencyOption currency,
         String icon,
         String color,

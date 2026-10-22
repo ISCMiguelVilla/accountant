@@ -202,7 +202,6 @@ public class AccountServiceImpl implements AccountService {
                         ? required(update.getCurrencyId(), "currencyId")
                         : account.getCurrency().getId(),
                 update.getBalance() != null ? update.getBalance() : account.getBalance(),
-                update.getPendingExpense() != null ? update.getPendingExpense() : account.getPendingExpense(),
                 update.has("icon") ? update.getIcon() : account.getIcon(),
                 update.has("color") ? update.getColor() : account.getColor(),
                 update.getIncludeInBalance() != null ? update.getIncludeInBalance() : account.isIncludeInBalance(),
@@ -236,13 +235,13 @@ public class AccountServiceImpl implements AccountService {
 
         Account parent = parent(account, request.parentId(), type, creating);
         if (!creating && type != account.getType()) {
-            checkTypeChange(account, type, parent);
+            checkTypeChange(account, type);
         }
         account.setCurrency(currency(account, request.currencyId()));
         account.setParent(parent);
         account.setName(name);
         account.setType(type);
-        applyBalance(account, request, creating);
+        applyBalance(account, request);
         account.setIcon(request.icon());
         account.setColor(request.color() == null ? null : request.color().toUpperCase(Locale.ROOT));
         account.setIncludeInBalance(request.includeInBalance() == null || request.includeInBalance());
@@ -254,44 +253,30 @@ public class AccountServiceImpl implements AccountService {
 
     /**
      * Manual balance edit: the value is overwritten without a transaction (the {@code @Version} bump lets open batch
-     * drafts detect it). For DEBTOR the pending expense defaults to the balance and never exceeds it.
+     * drafts detect it). Types without balance store null.
      */
-    private void applyBalance(Account account, AccountRequest request, boolean creating) {
-        AccountType type = request.type();
-        if (!type.hasBalance()) {
+    private void applyBalance(Account account, AccountRequest request) {
+        if (!request.type().hasBalance()) {
             account.setBalance(null);
-            account.setPendingExpense(null);
             return;
         }
-        BigDecimal balance = money(request.balance() != null ? request.balance() : account.balanceOrZero());
-        account.setBalance(balance);
-        if (type != AccountType.DEBTOR) {
-            account.setPendingExpense(null);
-            return;
-        }
-        BigDecimal pending;
-        if (request.pendingExpense() != null) {
-            pending = request.pendingExpense();
-        } else if (creating || account.getPendingExpense() == null) {
-            pending = balance;
-        } else {
-            pending = account.getPendingExpense();
-        }
-        account.setPendingExpense(money(pending.min(balance)));
+        account.setBalance(money(request.balance() != null ? request.balance() : account.balanceOrZero()));
     }
 
     /**
      * Type change rules:
      * <ul>
+     *   <li>never once the account has transactions ("movimientos"): its history would not be recalculated;
      *   <li>an account with a credit line must stay DEBTOR;
      *   <li>the new type must still accept every live sub-account;
-     *   <li>switching to a type without balance requires a zero balance (no money silently dropped);
-     *   <li>with transactions ("movimientos"), only the types allowed under its parent ("the group it belongs to")
-     *       and never GROUP; a root account (no parent) can only switch STORAGE <-> INVESTMENT.
+     *   <li>switching to a type without balance requires a zero balance (no money silently dropped).
      * </ul>
-     * The parent itself must always accept the new type (checked when resolving the parent).
+     * The parent must always accept the new type (checked when resolving the parent).
      */
-    private void checkTypeChange(Account account, AccountType newType, Account newParent) {
+    private void checkTypeChange(Account account, AccountType newType) {
+        if (accountRepository.hasTransactions(account.getId())) {
+            throw BusinessException.fieldError("type", TYPE_CHANGE_NOT_ALLOWED);
+        }
         if (newType != AccountType.DEBTOR && creditRepository.existsByAccountId(account.getId())) {
             throw BusinessException.fieldError("type", CREDIT_REQUIRES_DEBTOR);
         }
@@ -301,15 +286,6 @@ public class AccountServiceImpl implements AccountService {
         }
         if (!newType.hasBalance() && account.balanceOrZero().signum() != 0) {
             throw BusinessException.fieldError("type", TYPE_CHANGE_REQUIRES_ZERO_BALANCE);
-        }
-        if (accountRepository.hasTransactions(account.getId())) {
-            boolean allowed = newType.isTransactional()
-                    && (newParent != null
-                            ? newParent.getType().accepts(newType)
-                            : AccountType.isFreeTypeChange(account.getType(), newType));
-            if (!allowed) {
-                throw BusinessException.fieldError("type", TYPE_CHANGE_NOT_ALLOWED);
-            }
         }
     }
 

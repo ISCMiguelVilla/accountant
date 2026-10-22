@@ -52,10 +52,6 @@ public class Account extends AuditableEntity {
     @Column(precision = 19, scale = 2)
     private BigDecimal balance;
 
-    /** DEBTOR only: part of the debt recognized as expense when paid. 0 ≤ pendingExpense ≤ balance. */
-    @Column(name = "pending_expense", precision = 19, scale = 2)
-    private BigDecimal pendingExpense;
-
     @Column(length = 50)
     private String icon;
 

@@ -28,6 +28,7 @@ import com.devs.accountant.transaction.engine.EngineAccount;
 import com.devs.accountant.transaction.engine.EngineException;
 import com.devs.accountant.transaction.engine.EngineResult;
 import com.devs.accountant.transaction.engine.EngineTransaction;
+import com.devs.accountant.transaction.engine.Side;
 import com.devs.accountant.transaction.engine.TransactionEngine;
 import com.devs.accountant.transaction.engine.TransactionRules;
 import java.math.BigDecimal;
@@ -36,6 +37,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -66,7 +68,7 @@ public class TransactionServiceImpl implements TransactionService {
     private static final Sort NEWEST_FIRST = Sort.by(Sort.Order.desc("operationDate"), Sort.Order.desc("id"));
 
     static final QueryDefinition QUERY = QueryDefinition.builder()
-            .sortable("operationDate", "appliedAt", "amount", "type", "createdAt")
+            .sortable("operationDate", "originAppliedAt", "destinationAppliedAt", "amount", "type", "createdAt")
             .filterable(
                     "type",
                     "operationType",
@@ -84,7 +86,7 @@ public class TransactionServiceImpl implements TransactionService {
             .build();
 
     static final QueryDefinition ACCOUNT_QUERY = QueryDefinition.builder()
-            .sortable("operationDate", "appliedAt", "amount", "type", "createdAt")
+            .sortable("operationDate", "originAppliedAt", "destinationAppliedAt", "amount", "type", "createdAt")
             .defaultSort(NEWEST_FIRST)
             .defaultSize(10)
             .build();
@@ -117,13 +119,20 @@ public class TransactionServiceImpl implements TransactionService {
                             variants.add(new TransactionRulesResponse.Variant(
                                     origin,
                                     destination,
-                                    TransactionRules.operationType(type, origin),
+                                    TransactionRules.operationType(type, origin, destination),
                                     TransactionRules.feeEnabled(type, destination),
-                                    TransactionRules.feeMustBeBelowAmount(type, destination)));
+                                    TransactionRules.feeMustBeBelowAmount(type, destination),
+                                    TransactionRules.feeSide(type, destination)));
                         }
                     }
                     return new TransactionRulesResponse.TypeRule(
-                            type, origins, destinations, rule.destinationMode(), rule.pendingAllowed(), variants);
+                            type,
+                            origins,
+                            destinations,
+                            rule.destinationMode(),
+                            rule.originPendingAllowed(),
+                            rule.destinationPendingAllowed(),
+                            variants);
                 })
                 .toList();
         return new TransactionRulesResponse(types);
@@ -214,7 +223,6 @@ public class TransactionServiceImpl implements TransactionService {
         result.accounts().values().forEach(state -> {
             Account account = accounts.get(state.id());
             account.setBalance(state.balance());
-            account.setPendingExpense(state.pendingExpense());
             account.setStatus(state.status());
         });
 
@@ -232,11 +240,12 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     @Transactional
-    public TransactionResponse apply(Long id) {
+    public TransactionResponse apply(Long id, Side side) {
         Transaction transaction = load(id);
-        if (transaction.isApplied()) {
+        if (transaction.isFullyApplied()) {
             return transactionMapper.toResponse(transaction);
         }
+        Set<Side> sides = side == null ? EnumSet.allOf(Side.class) : EnumSet.of(side);
         Set<Long> ids = new TreeSet<>();
         ids.add(transaction.getOrigin().getId());
         if (transaction.getDestination() != null) {
@@ -261,29 +270,34 @@ public class TransactionServiceImpl implements TransactionService {
                 destination == null ? null : destination.getId(),
                 transaction.getAmount(),
                 transaction.getFee(),
-                false,
+                transaction.isOriginApplied(),
+                transaction.getDestinationApplied(),
                 transaction.getOperationDate());
         TransactionEngine.ApplyResult applied;
         try {
-            applied = TransactionEngine.applyPending(engineTransaction, originState, destinationState);
+            applied = TransactionEngine.applyPending(engineTransaction, originState, destinationState, sides);
         } catch (EngineException ex) {
             throw toBusiness(ex);
         }
 
-        // The affected side gets the snapshots of this moment.
-        if (transaction.getType() == TransactionType.EXPENSE) {
+        // Each side applied now gets the balances and the date of this moment.
+        LocalDateTime now = LocalDateTime.now(clock);
+        if (applied.appliedSides().contains(Side.ORIGIN)) {
             origin.setBalance(originState.balance());
-            origin.setPendingExpense(originState.pendingExpense());
+            origin.setStatus(originState.status());
             transaction.setOriginBalanceBefore(applied.originBalanceBefore());
             transaction.setOriginBalanceAfter(applied.originBalanceAfter());
-        } else {
+            transaction.setOriginApplied(true);
+            transaction.setOriginAppliedAt(now);
+        }
+        if (applied.appliedSides().contains(Side.DESTINATION)) {
             destination.setBalance(destinationState.balance());
             transaction.setDestinationBalanceBefore(applied.destinationBalanceBefore());
             transaction.setDestinationBalanceAfter(applied.destinationBalanceAfter());
+            transaction.setDestinationApplied(true);
+            transaction.setDestinationAppliedAt(now);
         }
-        transaction.setApplied(true);
-        transaction.setAppliedAt(LocalDateTime.now(clock));
-        log.info("Transaction {} applied", id);
+        log.info("Transaction {}: applied {}", id, applied.appliedSides());
         return transactionMapper.toResponse(transaction);
     }
 
@@ -416,7 +430,6 @@ public class TransactionServiceImpl implements TransactionService {
                 account.getType(),
                 account.getStatus(),
                 account.getBalance(),
-                account.getPendingExpense(),
                 creditLimit,
                 account.isTemporary());
     }
@@ -430,7 +443,8 @@ public class TransactionServiceImpl implements TransactionService {
                 tx.destinationAccountId(),
                 tx.amount(),
                 tx.fee(),
-                tx.isApplied(),
+                tx.isOriginApplied(),
+                tx.destinationAccountId() == null ? null : tx.isDestinationApplied(),
                 tx.operationDate());
     }
 
@@ -458,9 +472,11 @@ public class TransactionServiceImpl implements TransactionService {
         entity.setOriginBalanceAfter(computed.originBalanceAfter());
         entity.setDestinationBalanceBefore(computed.destinationBalanceBefore());
         entity.setDestinationBalanceAfter(computed.destinationBalanceAfter());
-        entity.setApplied(tx.applied());
         entity.setOperationDate(tx.operationDate());
-        entity.setAppliedAt(tx.applied() ? tx.operationDate() : null);
+        entity.setOriginApplied(tx.originApplied());
+        entity.setOriginAppliedAt(tx.originApplied() ? tx.operationDate() : null);
+        entity.setDestinationApplied(tx.destinationApplied());
+        entity.setDestinationAppliedAt(Boolean.TRUE.equals(tx.destinationApplied()) ? tx.operationDate() : null);
         return entity;
     }
 
@@ -487,7 +503,7 @@ public class TransactionServiceImpl implements TransactionService {
                 involving(filter.accountId()),
                 Specs.equal("origin.id", filter.originId()),
                 Specs.equal("destination.id", filter.destinationId()),
-                Specs.equal("applied", filter.applied()),
+                applied(filter.applied()),
                 filter.dateFrom() == null
                         ? null
                         : (root, query, cb) -> cb.greaterThanOrEqualTo(
@@ -505,6 +521,17 @@ public class TransactionServiceImpl implements TransactionService {
                         : (root, query, cb) -> cb.lessThanOrEqualTo(root.get("amount"), filter.amountMax()),
                 Specs.contains(filter.description(), "description"),
                 Specs.equal("batchUuid", filter.batchUuid()));
+    }
+
+    /** true = fully applied; false = some side still pending. */
+    private static Specification<Transaction> applied(Boolean applied) {
+        if (applied == null) {
+            return null;
+        }
+        return (root, query, cb) -> {
+            var pending = cb.or(cb.isFalse(root.get("originApplied")), cb.isFalse(root.get("destinationApplied")));
+            return applied ? cb.not(pending) : pending;
+        };
     }
 
     /** Origin or destination. */

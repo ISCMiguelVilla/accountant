@@ -33,7 +33,6 @@ import {
   ALLOWED_CHILDREN,
   AccountType,
   canBeTemporary,
-  freeTypeChanges,
   hasBalance,
 } from '../../shared/enums/account-type.enum';
 import { FieldErrorComponent } from '../../shared/forms/field-error.component';
@@ -194,26 +193,6 @@ const DEFAULT_PAYMENT_CRON = '0 0 0 5 * *';
             </div>
           }
 
-          @if (type() === 'DEBTOR') {
-            <div class="flex flex-col gap-2">
-              <label for="pendingExpense">{{ 'accounts.pendingExpense' | translate }}</label>
-              <p-inputnumber
-                inputId="pendingExpense"
-                formControlName="pendingExpense"
-                mode="decimal"
-                [minFractionDigits]="2"
-                [maxFractionDigits]="2"
-                [min]="0"
-                [locale]="language.locale()"
-                styleClass="w-full"
-              />
-              <small class="text-muted-color">{{
-                'accounts.pendingExpenseHelp' | translate
-              }}</small>
-              <app-field-error [control]="form.controls.pendingExpense" />
-            </div>
-          }
-
           <div class="flex flex-col gap-2">
             <label for="icon">{{ 'accounts.icon' | translate }}</label>
             <app-icon-picker
@@ -334,7 +313,6 @@ export class AccountFormPage {
     parentId: this.fb.control<number | null>(null),
     currencyId: this.fb.control<number | null>(null, Validators.required),
     balance: this.fb.control<number | null>(0, Validators.min(0)),
-    pendingExpense: this.fb.control<number | null>(null, Validators.min(0)),
     icon: this.fb.control<string | null>(null),
     color: this.fb.control<string | null>(null),
     includeInBalance: [true],
@@ -368,40 +346,29 @@ export class AccountFormPage {
     stream: ({ params }) => this.api.parentOptions(params.type, params.accountId),
   });
 
-  private readonly parentId = toSignal(this.form.controls.parentId.valueChanges, {
-    initialValue: this.form.controls.parentId.value,
-  });
-
   protected readonly typeLocked = computed(() => {
     const account = this.account.value();
     return !!account && (account.hasChildren || account.hasTransactions || !!account.credit);
   });
 
   /**
-   * Mirrors the backend rules: a credit line pins DEBTOR; the type must keep accepting its sub-accounts;
-   * with transactions only the types allowed by the parent group (never GROUP) — a root account can
-   * only switch STORAGE ↔ INVESTMENT.
+   * Mirrors the backend rules: no type change once the account has transactions; a credit line pins
+   * DEBTOR; the type must keep accepting its sub-accounts.
    */
   protected readonly typeOptions = computed<AccountType[]>(() => {
     const account = this.account.value();
     if (!account) {
       return [...ACCOUNT_TYPES];
     }
+    if (account.hasTransactions) {
+      return [account.type];
+    }
     if (account.credit) {
       return ['DEBTOR'];
     }
-    let options = ACCOUNT_TYPES.filter((type) =>
+    const options = ACCOUNT_TYPES.filter((type) =>
       account.childTypes.every((child) => ALLOWED_CHILDREN[type].includes(child)),
     );
-    if (account.hasTransactions) {
-      const parentId = this.parentId();
-      const parentType =
-        parentId === account.parent?.id
-          ? account.parent.type
-          : this.parents.value()?.find((parent) => parent.id === parentId)?.type;
-      const allowed = parentType ? ALLOWED_CHILDREN[parentType] : freeTypeChanges(account.type);
-      options = options.filter((type) => type !== 'GROUP' && allowed.includes(type));
-    }
     return options.includes(account.type) ? options : [account.type, ...options];
   });
 
@@ -489,7 +456,6 @@ export class AccountFormPage {
       parentId: value.parentId,
       currencyId: value.currencyId ?? 0,
       balance: hasBalance(type) ? (value.balance ?? 0) : null,
-      pendingExpense: type === 'DEBTOR' ? value.pendingExpense : null,
       icon: value.icon,
       color: normalizeColor(value.color),
       includeInBalance: value.includeInBalance,
@@ -506,7 +472,6 @@ export class AccountFormPage {
       parentId: account.parent?.id ?? null,
       currencyId: account.currency.id,
       balance: account.balance,
-      pendingExpense: account.pendingExpense,
       icon: account.icon,
       color: account.color,
       includeInBalance: account.includeInBalance,
