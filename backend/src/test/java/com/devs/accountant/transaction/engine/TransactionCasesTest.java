@@ -90,9 +90,6 @@ class TransactionCasesTest {
             assertThat(r.operationType().name())
                     .as("operationType of %s", uuid)
                     .isEqualTo(node.get("operationType").asString());
-            assertThat(text(r.reportedAmount()))
-                    .as("reportedAmount of %s", uuid)
-                    .isEqualTo(text(node, "reportedAmount"));
             assertThat(text(r.originBalanceBefore()))
                     .as("originBalanceBefore of %s", uuid)
                     .isEqualTo(text(node, "originBalanceBefore"));
@@ -108,6 +105,14 @@ class TransactionCasesTest {
         });
         // Expected transactions are listed in application (date) order.
         assertThat(order.stream().filter(expectedOrder::contains).toList()).isEqualTo(expectedOrder);
+
+        if (expected.has("report")) {
+            JsonNode report = expected.get("report");
+            ReportAmounts amounts = result.reportAmounts();
+            assertThat(text(amounts.income())).as("report income").isEqualTo(text(report, "income"));
+            assertThat(text(amounts.expense())).as("report expense").isEqualTo(text(report, "expense"));
+            assertThat(text(amounts.net())).as("report net").isEqualTo(text(report, "net"));
+        }
     }
 
     private static EngineAccount account(JsonNode node) {
@@ -129,8 +134,7 @@ class TransactionCasesTest {
                 node.has("destination") ? node.get("destination").asLong() : null,
                 decimal(node, "amount"),
                 decimal(node, "fee"),
-                flag(node, "originApplied"),
-                node.has("destination") ? flag(node, "destinationApplied") : null,
+                flag(node, "applied"),
                 LocalDateTime.parse(
                         node.has("operationDate") ? node.get("operationDate").asString() : DEFAULT_DATE));
     }

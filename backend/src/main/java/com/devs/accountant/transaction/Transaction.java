@@ -21,8 +21,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Persisted transaction. Never edited nor voided: only a side still unapplied can later be applied, which overwrites
- * the snapshots of that side and sets its applied date.
+ * Persisted transaction. Never edited nor voided: only a pending one can later be applied, which overwrites the
+ * snapshots of the affected side and sets {@code appliedAt}. The amount that counts in reports is computed from
+ * {@code operationType}, {@code amount} and {@code fee}; it is not stored.
  */
 @Entity
 @Table(name = "transactions")
@@ -69,9 +70,6 @@ public class Transaction extends AuditableEntity {
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal fee;
 
-    @Column(name = "reported_amount", nullable = false, precision = 19, scale = 2)
-    private BigDecimal reportedAmount;
-
     @Column(nullable = false, length = 255)
     private String description;
 
@@ -87,27 +85,13 @@ public class Transaction extends AuditableEntity {
     @Column(name = "destination_balance_after", precision = 19, scale = 2)
     private BigDecimal destinationBalanceAfter;
 
+    @Column(nullable = false)
+    private boolean applied;
+
     @Column(name = "operation_date", nullable = false)
     private LocalDateTime operationDate;
 
-    /** Whether the amount is already reflected on the origin. */
-    @Column(name = "origin_applied", nullable = false)
-    private boolean originApplied;
-
-    /** When the origin was applied; null while pending. */
-    @Column(name = "origin_applied_at")
-    private LocalDateTime originAppliedAt;
-
-    /** Whether the amount is already reflected on the destination; null when there is no destination. */
-    @Column(name = "destination_applied")
-    private Boolean destinationApplied;
-
-    /** When the destination was applied; null while pending or without destination. */
-    @Column(name = "destination_applied_at")
-    private LocalDateTime destinationAppliedAt;
-
-    /** Fully applied: no side left to reflect. */
-    public boolean isFullyApplied() {
-        return originApplied && !Boolean.FALSE.equals(destinationApplied);
-    }
+    /** When the effect was reflected; reports use this date. Null while pending. */
+    @Column(name = "applied_at")
+    private LocalDateTime appliedAt;
 }

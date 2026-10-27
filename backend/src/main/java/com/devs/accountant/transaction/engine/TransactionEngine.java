@@ -8,19 +8,18 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Pure transaction engine (no Spring). Balances change only by adding / subtracting transaction amounts. A batch is
  * applied in {@code operationDate} order (stable by capture order) and the first failure aborts the whole batch.
  *
- * <p>Each side (origin / destination) changes only when it is applied; a side left unapplied is reflected later with
- * {@link #applyPending}. Notation: A = amount, F = fee. See {@code docs/business-rules.md}; {@code
- * docs/transaction-cases.json} holds the cases shared with the TypeScript engine.
+ * <p>Pending (only EXPENSE, TRANSFER, INVEST, PROFIT): the EXPENSE origin and the TRANSFER / INVEST / PROFIT
+ * destination change only when the transaction is applied ({@link #applyPending}). Notation: A = amount, F = fee. See
+ * {@code docs/business-rules.md}; {@code docs/transaction-cases.json} holds the cases shared with the TypeScript
+ * engine.
  */
 public final class TransactionEngine {
 
@@ -36,11 +35,19 @@ public final class TransactionEngine {
     private TransactionEngine() {}
 
     /** Result of a batch: one result per transaction (date order) and the final account states. */
-    public record BatchResult(List<EngineResult> results, Map<Long, EngineAccount> accounts) {}
+    public record BatchResult(List<EngineResult> results, Map<Long, EngineAccount> accounts) {
 
-    /** Result of applying pending sides later: the snapshots and which sides were applied now. */
+        /** Income / expense of the applied transactions of the batch. */
+        public ReportAmounts reportAmounts() {
+            return results.stream()
+                    .filter(result -> result.transaction().applied())
+                    .map(EngineResult::reportAmounts)
+                    .reduce(ReportAmounts.zero(), ReportAmounts::plus);
+        }
+    }
+
+    /** Snapshots of applying a pending transaction later. */
     public record ApplyResult(
-            Set<Side> appliedSides,
             BigDecimal originBalanceBefore,
             BigDecimal originBalanceAfter,
             BigDecimal destinationBalanceBefore,
@@ -75,95 +82,26 @@ public final class TransactionEngine {
 
         BigDecimal originBefore = origin.balance();
         BigDecimal destinationBefore = destination == null ? null : destination.balance();
-        boolean originDisabled = false;
-        if (tx.originApplied()) {
-            originDisabled = applyOrigin(tx, origin, destination);
-        }
-        if (destination != null && tx.destinationApplied()) {
-            applyDestination(tx, destination);
-        }
-
-        OperationType operationType = TransactionRules.operationType(
-                tx.type(), origin.type(), destination == null ? null : destination.type());
-        BigDecimal reported = operationType == OperationType.NEUTER ? Money.zero() : tx.amount();
-        return new EngineResult(
-                tx,
-                operationType,
-                reported,
-                originBefore,
-                origin.balance(),
-                destinationBefore,
-                destination == null ? null : destination.balance(),
-                originDisabled);
-    }
-
-    /**
-     * Reflects the requested sides of a stored transaction that are still unapplied (PATCH /transactions/{id}/apply).
-     * Mutates the given accounts. Sides already applied are ignored, so it is idempotent.
-     */
-    public static ApplyResult applyPending(
-            EngineTransaction tx, EngineAccount origin, EngineAccount destination, Set<Side> sides) {
-        if (destination == null && sides.equals(EnumSet.of(Side.DESTINATION))) {
-            throw new EngineException(
-                    EngineError.TRANSACTION_NOT_SUPPORTED, tx.uuid(), tx.index(), null, null, Map.of());
-        }
-        BigDecimal originBefore = origin.balance();
-        BigDecimal destinationBefore = destination == null ? null : destination.balance();
-        Set<Side> applied = EnumSet.noneOf(Side.class);
-        boolean originDisabled = false;
-        if (sides.contains(Side.ORIGIN) && !tx.originApplied()) {
-            originDisabled = applyOrigin(tx, origin, destination);
-            applied.add(Side.ORIGIN);
-        }
-        if (sides.contains(Side.DESTINATION) && destination != null && !tx.destinationApplied()) {
-            applyDestination(tx, destination);
-            applied.add(Side.DESTINATION);
-        }
-        return new ApplyResult(
-                applied,
-                originBefore,
-                origin.balance(),
-                destinationBefore,
-                destination == null ? null : destination.balance(),
-                originDisabled);
-    }
-
-    // ---------------------------------------------------------------- effects
-
-    /** Origin side. Returns true when a temporary account was disabled: a PROFIT that leaves it at exactly 0. */
-    private static boolean applyOrigin(EngineTransaction tx, EngineAccount origin, EngineAccount destination) {
         BigDecimal a = tx.amount();
         BigDecimal f = tx.fee();
+        boolean originDisabled = false;
+
         switch (tx.type()) {
-            case INCOME -> {
-                // SUPPLIER has no balance.
+            case INCOME -> destination.add(a.subtract(f));
+            case EXPENSE -> {
+                if (tx.applied()) {
+                    debitExpense(tx, origin);
+                }
             }
-            case EXPENSE, PAYMENT -> {
-                // The origin pays the amount plus the fee.
-                requireFunds(tx, origin, a.add(f));
-                origin.subtract(a.add(f));
-            }
-            case TRANSFER, INVEST, PROFIT, BORROW -> {
+            case TRANSFER, INVEST, PROFIT -> {
                 requireFunds(tx, origin, a);
                 origin.subtract(a);
-                if (tx.type() == TransactionType.PROFIT
-                        && origin.temporary()
-                        && origin.balance().signum() == 0) {
-                    origin.disable();
-                    return true;
+                if (tx.applied()) {
+                    destination.add(a.subtract(f));
+                    originDisabled = disableTemporary(tx, origin);
                 }
             }
-            case COLLECTION -> {
-                if (a.compareTo(origin.balance()) > 0) {
-                    throw senseless(tx, origin);
-                }
-                origin.subtract(a);
-            }
-            case DIVIDEND -> {
-                if (destination == null) {
-                    origin.add(a.subtract(f));
-                }
-            }
+            case DIVIDEND -> (destination == null ? origin : destination).add(a.subtract(f));
             case INTEREST -> {
                 if (origin.type() == AccountType.DEBTOR) {
                     requireCredit(tx, origin, a);
@@ -173,32 +111,91 @@ public final class TransactionEngine {
                     origin.subtract(a);
                 }
             }
+            case BORROW -> {
+                requireFunds(tx, origin, a);
+                origin.subtract(a);
+                destination.add(a);
+            }
+            case COLLECTION -> {
+                if (a.compareTo(origin.balance()) > 0) {
+                    throw senseless(tx, origin);
+                }
+                origin.subtract(a);
+                destination.add(a);
+            }
             case DEBT -> {
                 requireCredit(tx, origin, a);
                 origin.add(a);
+                destination.add(a.subtract(f)); // CONSUMER has no balance: no effect
             }
-        }
-        return false;
-    }
-
-    /** Destination side. */
-    private static void applyDestination(EngineTransaction tx, EngineAccount destination) {
-        BigDecimal a = tx.amount();
-        BigDecimal f = tx.fee();
-        switch (tx.type()) {
-            // DEBT → CONSUMER: the consumer has no balance, so add() does nothing.
-            case INCOME, TRANSFER, INVEST, PROFIT, DIVIDEND, DEBT -> destination.add(a.subtract(f));
-            case BORROW, COLLECTION -> destination.add(a);
             case PAYMENT -> {
+                requireFunds(tx, origin, a.add(f));
                 if (a.compareTo(destination.balance()) > 0) {
                     throw senseless(tx, destination);
                 }
+                origin.subtract(a.add(f));
                 destination.subtract(a);
             }
-            case EXPENSE, INTEREST -> {
-                // EXPENSE goes to a CONSUMER (no balance); INTEREST has no destination.
-            }
         }
+        OperationType operationType =
+                TransactionRules.operationType(tx.type(), destination == null ? null : destination.type());
+        return new EngineResult(
+                tx,
+                operationType,
+                originBefore,
+                origin.balance(),
+                destinationBefore,
+                destination == null ? null : destination.balance(),
+                originDisabled);
+    }
+
+    /**
+     * Applies the pending effect of a stored transaction (PATCH /transactions/{id}/apply). Mutates the given accounts.
+     * Only EXPENSE and TRANSFER / INVEST / PROFIT can be pending.
+     */
+    public static ApplyResult applyPending(EngineTransaction tx, EngineAccount origin, EngineAccount destination) {
+        BigDecimal originBefore = origin.balance();
+        BigDecimal destinationBefore = destination == null ? null : destination.balance();
+        boolean originDisabled = false;
+        switch (tx.type()) {
+            case EXPENSE -> debitExpense(tx, origin);
+            case TRANSFER, INVEST, PROFIT -> {
+                destination.add(tx.amount().subtract(tx.fee()));
+                originDisabled = disableTemporary(tx, origin);
+            }
+            default ->
+                throw new EngineException(
+                        EngineError.TRANSACTION_NOT_SUPPORTED, tx.uuid(), tx.index(), null, null, Map.of());
+        }
+        return new ApplyResult(
+                originBefore,
+                origin.balance(),
+                destinationBefore,
+                destination == null ? null : destination.balance(),
+                originDisabled);
+    }
+
+    // ---------------------------------------------------------------- effects
+
+    /** EXPENSE origin: STORAGE pays {@code A + F}; a DEBTOR (card purchase) grows its debt by {@code A + F}. */
+    private static void debitExpense(EngineTransaction tx, EngineAccount origin) {
+        BigDecimal total = tx.amount().add(tx.fee());
+        if (origin.type() == AccountType.DEBTOR) {
+            requireCredit(tx, origin, total);
+            origin.add(total);
+        } else {
+            requireFunds(tx, origin, total);
+            origin.subtract(total);
+        }
+    }
+
+    /** A PROFIT disables its temporary origin when the transaction is applied (the investment is over). */
+    private static boolean disableTemporary(EngineTransaction tx, EngineAccount origin) {
+        if (tx.type() == TransactionType.PROFIT && origin.temporary()) {
+            origin.disable();
+            return true;
+        }
+        return false;
     }
 
     // ------------------------------------------------------------ validations
@@ -211,7 +208,7 @@ public final class TransactionEngine {
         return account;
     }
 
-    /** Rule matrix, enabled fields, pending sides and account status. */
+    /** Rule matrix, enabled fields and account status. */
     private static void validate(EngineTransaction tx, EngineAccount origin, EngineAccount destination) {
         TransactionRules.Rule rule = TransactionRules.of(tx.type());
         if (destination != null && destination.id() == origin.id()) {
@@ -246,11 +243,8 @@ public final class TransactionEngine {
                 && tx.fee().compareTo(tx.amount()) >= 0) {
             throw invalid(tx, "fee", FEE_NOT_BELOW_AMOUNT);
         }
-        if (!tx.originApplied() && !rule.originPendingAllowed()) {
-            throw invalid(tx, "originApplied", PENDING_NOT_ALLOWED);
-        }
-        if (destination != null && !tx.destinationApplied() && !rule.destinationPendingAllowed()) {
-            throw invalid(tx, "destinationApplied", PENDING_NOT_ALLOWED);
+        if (!tx.applied() && !rule.pendingAllowed()) {
+            throw invalid(tx, "applied", PENDING_NOT_ALLOWED);
         }
         requireActive(tx, origin);
         if (destination != null) {

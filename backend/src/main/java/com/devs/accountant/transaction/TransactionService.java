@@ -7,7 +7,6 @@ import com.devs.accountant.transaction.dto.BatchResponse;
 import com.devs.accountant.transaction.dto.TransactionFilter;
 import com.devs.accountant.transaction.dto.TransactionResponse;
 import com.devs.accountant.transaction.dto.TransactionRulesResponse;
-import com.devs.accountant.transaction.engine.Side;
 
 public interface TransactionService {
 
@@ -23,9 +22,6 @@ public interface TransactionService {
     /** Validates, computes and persists the whole batch in one database transaction (all or nothing). */
     BatchResponse saveBatch(BatchRequest request);
 
-    /**
-     * Reflects the sides still unapplied ({@code side} null = every pending side). Validates funds / credit limit when
-     * the origin is applied. Idempotent.
-     */
-    TransactionResponse apply(Long id, Side side);
+    /** Reflects the pending effect of a transaction (revalidating funds / credit limit); idempotent. */
+    TransactionResponse apply(Long id);
 }

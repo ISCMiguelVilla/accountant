@@ -266,23 +266,24 @@ public class AccountServiceImpl implements AccountService {
     /**
      * Type change rules:
      * <ul>
-     *   <li>never once the account has transactions ("movimientos"): its history would not be recalculated;
      *   <li>an account with a credit line must stay DEBTOR;
-     *   <li>the new type must still accept every live sub-account;
+     *   <li>with sub-accounts or transactions only STORAGE ↔ INVESTMENT, and the new type must still accept every
+     *       live sub-account;
      *   <li>switching to a type without balance requires a zero balance (no money silently dropped).
      * </ul>
      * The parent must always accept the new type (checked when resolving the parent).
      */
     private void checkTypeChange(Account account, AccountType newType) {
-        if (accountRepository.hasTransactions(account.getId())) {
-            throw BusinessException.fieldError("type", TYPE_CHANGE_NOT_ALLOWED);
-        }
         if (newType != AccountType.DEBTOR && creditRepository.existsByAccountId(account.getId())) {
             throw BusinessException.fieldError("type", CREDIT_REQUIRES_DEBTOR);
         }
         Set<AccountType> childTypes = accountRepository.findChildTypes(account.getId(), AccountStatus.DELETED);
-        if (!newType.allowedChildren().containsAll(childTypes)) {
-            throw BusinessException.fieldError("type", TYPE_CHANGE_NOT_ALLOWED);
+        if (!childTypes.isEmpty() || accountRepository.hasTransactions(account.getId())) {
+            boolean allowed = AccountType.isFreeTypeChange(account.getType(), newType)
+                    && newType.allowedChildren().containsAll(childTypes);
+            if (!allowed) {
+                throw BusinessException.fieldError("type", TYPE_CHANGE_NOT_ALLOWED);
+            }
         }
         if (!newType.hasBalance() && account.balanceOrZero().signum() != 0) {
             throw BusinessException.fieldError("type", TYPE_CHANGE_REQUIRES_ZERO_BALANCE);

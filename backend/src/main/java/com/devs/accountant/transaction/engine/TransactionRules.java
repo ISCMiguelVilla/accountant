@@ -17,9 +17,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * The single definition of which accounts each transaction type accepts, which fields are enabled, which side may stay
- * unapplied and how it counts in reports. Exposed to the frontend through {@code GET /transactions/rules}; the client
- * never duplicates it.
+ * The single definition of which accounts each transaction type accepts, which fields are enabled, whether it may be
+ * saved pending and how it counts in reports. Exposed to the frontend through {@code GET /transactions/rules}; the
+ * client never duplicates it.
  */
 public final class TransactionRules {
 
@@ -29,55 +29,44 @@ public final class TransactionRules {
             Set<AccountType> origins,
             Set<AccountType> destinations,
             DestinationMode destinationMode,
-            boolean originPendingAllowed,
-            boolean destinationPendingAllowed) {}
+            boolean pendingAllowed) {}
 
     private static final Map<TransactionType, Rule> RULES = new EnumMap<>(TransactionType.class);
 
     static {
-        rule(TransactionType.INCOME, EnumSet.of(SUPPLIER), EnumSet.of(STORAGE), DestinationMode.REQUIRED, false, false);
-        // Purchases on credit are DEBT → CONSUMER: every EXPENSE is money really leaving.
-        rule(TransactionType.EXPENSE, EnumSet.of(STORAGE), EnumSet.of(CONSUMER), DestinationMode.REQUIRED, true, false);
-        rule(TransactionType.TRANSFER, EnumSet.of(STORAGE), EnumSet.of(STORAGE), DestinationMode.REQUIRED, true, true);
+        rule(TransactionType.INCOME, EnumSet.of(SUPPLIER), EnumSet.of(STORAGE), DestinationMode.REQUIRED, false);
+        // From DEBTOR = purchase with a credit card.
+        rule(
+                TransactionType.EXPENSE,
+                EnumSet.of(STORAGE, DEBTOR),
+                EnumSet.of(CONSUMER),
+                DestinationMode.REQUIRED,
+                true);
+        rule(TransactionType.TRANSFER, EnumSet.of(STORAGE), EnumSet.of(STORAGE), DestinationMode.REQUIRED, true);
         rule(
                 TransactionType.INVEST,
                 EnumSet.of(STORAGE, INVESTMENT),
                 EnumSet.of(INVESTMENT, BUSINESS),
                 DestinationMode.REQUIRED,
-                true,
                 true);
         rule(
                 TransactionType.PROFIT,
                 EnumSet.of(INVESTMENT, BUSINESS),
                 EnumSet.of(STORAGE, INVESTMENT),
                 DestinationMode.REQUIRED,
-                true,
                 true);
         Set<AccountType> dividend = EnumSet.of(INVESTMENT, BUSINESS, STORAGE, CREDITOR);
-        rule(TransactionType.DIVIDEND, dividend, dividend, DestinationMode.OPTIONAL, false, true);
+        rule(TransactionType.DIVIDEND, dividend, dividend, DestinationMode.OPTIONAL, false);
         rule(
                 TransactionType.INTEREST,
                 EnumSet.of(INVESTMENT, BUSINESS, STORAGE, DEBTOR),
                 EnumSet.noneOf(AccountType.class),
                 DestinationMode.NONE,
-                false,
                 false);
-        rule(TransactionType.BORROW, EnumSet.of(STORAGE), EnumSet.of(CREDITOR), DestinationMode.REQUIRED, false, false);
-        rule(
-                TransactionType.COLLECTION,
-                EnumSet.of(CREDITOR),
-                EnumSet.of(STORAGE),
-                DestinationMode.REQUIRED,
-                false,
-                false);
-        rule(
-                TransactionType.DEBT,
-                EnumSet.of(DEBTOR),
-                EnumSet.of(STORAGE, CONSUMER),
-                DestinationMode.REQUIRED,
-                false,
-                false);
-        rule(TransactionType.PAYMENT, EnumSet.of(STORAGE), EnumSet.of(DEBTOR), DestinationMode.REQUIRED, false, false);
+        rule(TransactionType.BORROW, EnumSet.of(STORAGE), EnumSet.of(CREDITOR), DestinationMode.REQUIRED, false);
+        rule(TransactionType.COLLECTION, EnumSet.of(CREDITOR), EnumSet.of(STORAGE), DestinationMode.REQUIRED, false);
+        rule(TransactionType.DEBT, EnumSet.of(DEBTOR), EnumSet.of(STORAGE, CONSUMER), DestinationMode.REQUIRED, false);
+        rule(TransactionType.PAYMENT, EnumSet.of(STORAGE), EnumSet.of(DEBTOR), DestinationMode.REQUIRED, false);
     }
 
     private TransactionRules() {}
@@ -87,17 +76,8 @@ public final class TransactionRules {
             Set<AccountType> origins,
             Set<AccountType> destinations,
             DestinationMode mode,
-            boolean originPendingAllowed,
-            boolean destinationPendingAllowed) {
-        RULES.put(
-                type,
-                new Rule(
-                        type,
-                        Set.copyOf(origins),
-                        Set.copyOf(destinations),
-                        mode,
-                        originPendingAllowed,
-                        destinationPendingAllowed));
+            boolean pendingAllowed) {
+        RULES.put(type, new Rule(type, Set.copyOf(origins), Set.copyOf(destinations), mode, pendingAllowed));
     }
 
     public static Rule of(TransactionType type) {
@@ -123,41 +103,16 @@ public final class TransactionRules {
     }
 
     /**
-     * Account that pays the fee: the origin pays {@code A + F} in EXPENSE and PAYMENT; otherwise the receiving side
-     * gets {@code A − F}. Reports count every fee as an expense on the date this side is applied. Null when the type
-     * has no fee.
+     * Report classification: the expense is recognized when the money reaches a CONSUMER (from STORAGE or from a
+     * DEBTOR) or by INTEREST. A cash loan (DEBT → STORAGE) and paying a debt (PAYMENT) are NEUTER: only their fee
+     * counts as an expense (see {@link ReportAmounts}).
      */
-    public static Side feeSide(TransactionType type, AccountType destination) {
-        if (!feeEnabled(type, destination)) {
-            return null;
-        }
-        return switch (type) {
-            case EXPENSE, PAYMENT -> Side.ORIGIN;
-            case DIVIDEND -> destination == null ? Side.ORIGIN : Side.DESTINATION;
-            default -> Side.DESTINATION;
-        };
-    }
-
-    /**
-     * Report classification: ADDITION when money enters my accounts (INCOME, DIVIDEND, cash loan DEBT → STORAGE),
-     * SUBTRACTION when it leaves them (EXPENSE, PAYMENT, INTEREST not on a debt), NEUTER when it only moves between my
-     * accounts or grows a debt that is paid later.
-     */
-    public static OperationType operationType(TransactionType type, AccountType origin, AccountType destination) {
+    public static OperationType operationType(TransactionType type, AccountType destination) {
         return switch (type) {
             case INCOME, DIVIDEND -> OperationType.ADDITION;
-            case EXPENSE, PAYMENT -> OperationType.SUBTRACTION;
-            case INTEREST -> origin == DEBTOR ? OperationType.NEUTER : OperationType.SUBTRACTION;
-            case DEBT -> destination == STORAGE ? OperationType.ADDITION : OperationType.NEUTER;
-            case TRANSFER, INVEST, PROFIT, BORROW, COLLECTION -> OperationType.NEUTER;
+            case EXPENSE, INTEREST -> OperationType.SUBTRACTION;
+            case DEBT -> destination == CONSUMER ? OperationType.SUBTRACTION : OperationType.NEUTER;
+            case PAYMENT, TRANSFER, INVEST, PROFIT, BORROW, COLLECTION -> OperationType.NEUTER;
         };
-    }
-
-    /** Side whose applied date places an income/expense in the reports. */
-    public static Side reportSide(OperationType operationType, boolean hasDestination) {
-        if (operationType == OperationType.ADDITION && hasDestination) {
-            return Side.DESTINATION;
-        }
-        return Side.ORIGIN;
     }
 }

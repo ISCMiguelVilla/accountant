@@ -9,7 +9,7 @@ Notación: **A** = monto (`amount` > 0), **F** = comisión o impuesto (`fee` ≥
 | Tipo | Significado | Origen | Destino | Destino es |
 |---|---|---|---|---|
 | INCOME | ingreso | SUPPLIER | STORAGE | obligatorio |
-| EXPENSE | gasto con dinero propio | STORAGE | CONSUMER | obligatorio |
+| EXPENSE | gasto (con dinero propio o con tarjeta) | STORAGE, DEBTOR | CONSUMER | obligatorio |
 | TRANSFER | mover entre cuentas propias | STORAGE | STORAGE | obligatorio |
 | INVEST | invertir | STORAGE, INVESTMENT | INVESTMENT, BUSINESS | obligatorio |
 | PROFIT | retirar los recursos de una inversión | INVESTMENT, BUSINESS | STORAGE, INVESTMENT | obligatorio |
@@ -20,26 +20,24 @@ Notación: **A** = monto (`amount` > 0), **F** = comisión o impuesto (`fee` ≥
 | DEBT | endeudarse: efectivo o compra a crédito | DEBTOR | STORAGE, CONSUMER | obligatorio |
 | PAYMENT | pagar una deuda | STORAGE | DEBTOR | obligatorio |
 
-Además: origen ≠ destino, ambas cuentas del usuario y **ACTIVE**. Una cuenta GROUP nunca participa. Las compras con tarjeta son **DEBT → CONSUMER**; EXPENSE solo sale de STORAGE.
+Además: origen ≠ destino, ambas cuentas del usuario y **ACTIVE**. Una cuenta GROUP nunca participa. Una compra con tarjeta puede registrarse como **EXPENSE Visa → Comida** o como **DEBT Visa → Comida**; ambas son equivalentes para reportes.
 
 ## 2. Comisión (fee)
 
-| Caso | Fee habilitado | Debe ser F < A | La paga |
+| Caso | Fee habilitado | Debe ser F < A | Efecto |
 |---|---|---|---|
 | INTEREST, BORROW, COLLECTION, DEBT → CONSUMER | no (debe ser 0) | — | — |
-| INCOME, TRANSFER, INVEST, PROFIT, DEBT → STORAGE, DIVIDEND con destino | sí | **sí** | el destino (recibe A − F) |
-| DIVIDEND sin destino | sí | **sí** | el origen (recibe A − F) |
-| EXPENSE, PAYMENT | sí | no | el origen (paga A + F) |
+| INCOME, TRANSFER, INVEST, PROFIT, DEBT → STORAGE, DIVIDEND | sí | **sí** | quien recibe obtiene A − F |
+| EXPENSE, PAYMENT | sí | no | el origen paga (o debe) A + F |
 
 ## 3. Efectos sobre los saldos
 
-Cada lado cambia **solo cuando está aplicado** (`originApplied` / `destinationApplied`).
-
-| Tipo | Validaciones (al aplicar el lado) | Origen | Destino |
+| Tipo | Validaciones | Origen | Destino |
 |---|---|---|---|
 | INCOME | F < A | sin saldo | `+ (A − F)` |
-| EXPENSE | fondos ≥ A + F | `− (A + F)` | sin saldo |
-| TRANSFER / INVEST / PROFIT | fondos ≥ A; F < A | `− A` | `+ (A − F)` |
+| EXPENSE desde STORAGE | fondos ≥ A + F | `− (A + F)` *(pendiente)* | sin saldo |
+| EXPENSE desde DEBTOR | límite de crédito | `+ (A + F)` *(pendiente)* | sin saldo |
+| TRANSFER / INVEST / PROFIT | fondos ≥ A; F < A | `− A` (siempre inmediato) | `+ (A − F)` *(pendiente)* |
 | DIVIDEND | F < A | sin destino: `+ (A − F)` | con destino: `+ (A − F)` (el origen no cambia) |
 | INTEREST (no DEBTOR) | fondos ≥ A | `− A` | — |
 | INTEREST (DEBTOR) | límite de crédito | `+ A` | — |
@@ -49,47 +47,62 @@ Cada lado cambia **solo cuando está aplicado** (`originApplied` / `destinationA
 | DEBT → CONSUMER | límite de crédito | `+ A` | sin saldo |
 | PAYMENT | fondos ≥ A + F; A ≤ deuda (si no, `SENSELESS_TRANSACTION`) | `− (A + F)` | `− A` |
 
+*(pendiente)* = ese efecto solo ocurre cuando `applied = true`.
+
 - **Límite de crédito**: solo si la DEBTOR tiene Credit: `saldo + aumento ≤ límite` (si no, `CREDIT_LIMIT_EXCEEDED`). Sin Credit no hay límite.
-- **Cuenta temporal**: un PROFIT cuyo origen es una cuenta temporal la **deshabilita solo si su saldo queda exactamente en 0** y en el momento en que se aplica el origen. Si queda saldo, sigue activa. Una transacción posterior del lote que la use falla con `ACCOUNT_DISABLED`.
+- **Cuenta temporal**: un PROFIT cuyo origen es una cuenta temporal la **deshabilita al aplicarse la transacción**, quede o no saldo remanente. Mientras el PROFIT esté pendiente la cuenta sigue activa. Una transacción posterior del lote que la use falla con `ACCOUNT_DISABLED`.
 
-## 4. Lados que pueden quedar sin aplicar
+## 4. Transacciones pendientes
 
-| Tipo | Origen | Destino |
+Cada transacción tiene un solo indicador `applied` (default `true`) y su fecha `applied_at` (= `operation_date` si nace aplicada; NULL si está pendiente).
+
+| Tipo | Lado pendiente | Lado inmediato |
 |---|---|---|
-| EXPENSE | sí | — (CONSUMER) |
-| TRANSFER, INVEST, PROFIT | sí | sí |
-| DIVIDEND con destino | no | sí |
-| INCOME, DIVIDEND sin destino, INTEREST, BORROW, COLLECTION, DEBT, PAYMENT | no | no |
+| EXPENSE (desde STORAGE o DEBTOR) | origen | — |
+| TRANSFER, INVEST, PROFIT | destino | origen (se descuenta al registrar) |
+| Los demás (incluido PAYMENT) | — (`applied = false` no permitido) | todo |
 
-Si se envía `false` en un lado no permitido → `VALIDATION_ERROR` con `PENDING_NOT_ALLOWED` en `originApplied` o `destinationApplied`. Un lado sin aplicar guarda `before = after = saldo actual` y su fecha de aplicación en NULL. **No se validan fondos ni límite de un lado sin aplicar**: se validan cuando se aplica.
+Si se envía `applied = false` en un tipo no permitido → `VALIDATION_ERROR` con `PENDING_NOT_ALLOWED` en `applied`. El lado pendiente guarda `before = after = saldo actual`. **No se validan fondos ni límite del lado pendiente**: se validan cuando se aplica.
 
-## 5. Reportes: tipo de operación, monto reportado y comisiones
+## 5. Reportes: tipo de operación y monto que cuenta
 
-Principio: **ingreso cuando el dinero entra a mis cuentas, gasto cuando sale**.
+Principio: **el gasto se reconoce al llegar a una cuenta CONSUMER (o por INTEREST)**; deudas en efectivo y pagos son movimientos internos.
 
-| Tipo / variante | `operationType` | `reportedAmount` |
-|---|---|---|
-| INCOME, DIVIDEND, DEBT → STORAGE | ADDITION | A |
-| EXPENSE, PAYMENT, INTEREST sobre cuenta no DEBTOR | SUBTRACTION | A |
-| DEBT → CONSUMER, INTEREST sobre DEBTOR | NEUTER | 0 |
-| TRANSFER, INVEST, PROFIT, BORROW, COLLECTION | NEUTER | 0 |
+| Tipo / variante | `operationType` |
+|---|---|
+| INCOME, DIVIDEND | ADDITION |
+| EXPENSE (desde STORAGE o DEBTOR), INTEREST (cualquier origen), DEBT → CONSUMER | SUBTRACTION |
+| DEBT → STORAGE, PAYMENT, TRANSFER, INVEST, PROFIT, BORROW, COLLECTION | NEUTER |
 
-- **Fecha que cuenta**: un ADDITION por `destination_applied_at` (o `origin_applied_at` si no tiene destino); un SUBTRACTION por `origin_applied_at`. Lo no aplicado no cuenta.
-- **Comisiones**: toda F > 0 es un **gasto** en el concepto "Comisiones", que solo existe dentro del reporte (no hay cuenta en `accounts`). Cuenta en la fecha de aplicación del lado que la paga (sección 2).
-- Ejemplo del ciclo de una tarjeta: compra a crédito 1,000 (NEUTER) → disposición en efectivo 2,000 con comisión 50 (ingreso 2,000, gasto 50) → interés 30 (NEUTER) → pago de 3,030 (gasto 3,030). Neto: −1,080 = compra + comisión + interés.
+Monto que cuenta (se calcula en la consulta, **no se persiste**):
+
+- ADDITION → ingreso `A − F`.
+- SUBTRACTION → gasto `A + F`.
+- NEUTER → solo `F` como gasto, en el concepto "Comisiones" (existe solo en el reporte, no en `accounts`).
+
+Todos los reportes usan `applied_at`: lo pendiente no cuenta hasta aplicarse.
+
+| Escenario | Transacciones | Ingreso | Gasto | Neto |
+|---|---|---|---|---|
+| Préstamo en efectivo usado y pagado | DEBT → STORAGE 10,000 → EXPENSE 10,000 → PAYMENT 10,000 | 0 | 10,000 | −10,000 |
+| Préstamo en efectivo devuelto sin usar | DEBT → STORAGE 10,000 → PAYMENT 10,000 | 0 | 0 | 0 |
+| Compra con TDC y pago | EXPENSE desde DEBTOR 10,000 → PAYMENT 10,000 | 0 | 10,000 | −10,000 |
+| Compra a crédito y pago | DEBT → CONSUMER 10,000 → PAYMENT 10,000 | 0 | 10,000 | −10,000 |
+| Interés de la TDC y pago | INTEREST sobre DEBTOR 500 → PAYMENT 500 | 0 | 500 | −500 |
+| Pago con comisión | PAYMENT 10,000 con fee 50 | 0 | 50 | −50 |
 
 ## 6. Lote (`POST /transactions/batch`)
 
-1. Validación de estructura (Bean Validation): máx. 500 transacciones, `uuid` único, `amount` > 0 con 2 decimales, descripción de 3 a 255 caracteres. `originApplied` / `destinationApplied` son opcionales (default `true`).
+1. Validación de estructura (Bean Validation): máx. 500 transacciones, `uuid` único, `amount` > 0 con 2 decimales, descripción de 3 a 255 caracteres. `applied` es opcional (default `true`).
 2. Bloqueo pesimista de todas las cuentas involucradas, en orden de id. Cuentas inexistentes, de otro usuario o eliminadas → `RESOURCE_NOT_FOUND`. Si el cliente envía `accountVersions` y alguna no coincide → `CONFLICT`.
 3. `operationDate` no puede ser anterior a la última transacción **persistida** de cada cuenta involucrada → `DATE_BEFORE_LAST_TRANSACTION` (`params.lastOperationDate`). La misma fecha sí se permite.
 4. Programadas (`scheduleId`): deben existir, no estar eliminadas, coincidir en tipo, origen y destino y no repetirse en el lote.
 5. El motor ordena por `operationDate` (desempate por orden de captura) y aplica una por una. La primera falla aborta todo (rollback total).
-6. Se asigna un `batch_uuid` y se persisten las transacciones (con sus lados aplicados y fechas) y los saldos. Cada programada ejecutada actualiza `last_execution = operation_date` y `next_execution = cron.next(next_execution anterior)`.
+6. Se asigna un `batch_uuid` y se persisten las transacciones y los saldos. Cada programada ejecutada actualiza `last_execution = operation_date` y `next_execution = cron.next(next_execution anterior)`.
 
-## 7. Aplicar lados pendientes (`PATCH /transactions/{id}/apply[?side=ORIGIN|DESTINATION]`)
+## 7. Aplicar una transacción pendiente (`PATCH /transactions/{id}/apply`)
 
-Sin `side` aplica todos los lados pendientes; con `side`, solo ese. Es idempotente: un lado ya aplicado no cambia. Al aplicar el origen se validan fondos o límite de crédito y se evalúa la regla de cuenta temporal. Cada lado aplicado guarda la fecha del momento (`origin_applied_at` / `destination_applied_at`) y **sobrescribe** sus snapshots con los saldos de ese momento. Pedir el destino de una transacción sin destino → `TRANSACTION_NOT_SUPPORTED`.
+Aplica el efecto pendiente (sección 4) y es idempotente: si ya está aplicada no cambia nada. Al aplicar se validan fondos o límite de crédito del lado afectado (EXPENSE: el origen) y se evalúa la regla de cuenta temporal (PROFIT). Se registra `applied_at = now` y se **sobrescriben** los snapshots de la cuenta afectada con los saldos de ese momento. Aplicar un tipo sin efecto pendiente → `TRANSACTION_NOT_SUPPORTED`.
 
 ## 8. Errores del motor
 
@@ -101,12 +114,13 @@ Todos se devuelven como `ProblemDetail` con `transactionUuid` y `params.index` (
 | `CREDIT_LIMIT_EXCEEDED` | la deuda superaría el límite (`params.available`) |
 | `SENSELESS_TRANSACTION` | cobrar más de lo prestado o pagar más de lo que se debe |
 | `ACCOUNT_DISABLED` | cuenta no ACTIVE (`params.accountId`) |
-| `TRANSACTION_NOT_SUPPORTED` | aplicar el destino de una transacción sin destino |
+| `TRANSACTION_NOT_SUPPORTED` | aplicar una transacción cuyo tipo no admite pendiente |
 | `VALIDATION_ERROR` | violación de la matriz; `errors` = `{ campo: código }` |
 
-Códigos de campo de `VALIDATION_ERROR`: `SAME_ACCOUNT`, `ORIGIN_NOT_ALLOWED`, `DESTINATION_REQUIRED`, `DESTINATION_NOT_ALLOWED`, `FEE_NOT_ALLOWED`, `FEE_NOT_BELOW_AMOUNT`, `PENDING_NOT_ALLOWED` (`originApplied` / `destinationApplied`), `ACCOUNT_NOT_FOUND` (motor) y, a nivel de lote, `DUPLICATED` (`transactions[i].uuid` / `scheduleId`), `INVALID_SCHEDULE` y `SCHEDULE_MISMATCH`.
+Códigos de campo de `VALIDATION_ERROR`: `SAME_ACCOUNT`, `ORIGIN_NOT_ALLOWED`, `DESTINATION_REQUIRED`, `DESTINATION_NOT_ALLOWED`, `FEE_NOT_ALLOWED`, `FEE_NOT_BELOW_AMOUNT`, `PENDING_NOT_ALLOWED` (`applied`), `ACCOUNT_NOT_FOUND` (motor) y, a nivel de lote, `DUPLICATED` (`transactions[i].uuid` / `scheduleId`), `INVALID_SCHEDULE` y `SCHEDULE_MISMATCH`.
 
 ## 9. Cuentas relacionadas con el motor
 
-- El **tipo** de una cuenta solo puede cambiar si **no tiene movimientos**.
+- Si la cuenta tiene sub-cuentas o transacciones, su **tipo** solo puede cambiar entre STORAGE e INVESTMENT (y el nuevo tipo debe aceptar las sub-cuentas existentes). Sin sub-cuentas ni transacciones, cualquier cambio es válido.
+- Una cuenta con línea de crédito debe seguir siendo DEBTOR; cambiar a un tipo sin saldo exige saldo 0.
 - No existe un saldo de "gasto por reconocer": la deuda de una DEBTOR es solo su `balance`.

@@ -2,7 +2,7 @@
 
 Aplicación web de **finanzas personales**, multiusuario y de uso doméstico, pensada para ejecutarse **en local** (en tu propio equipo o en tu red de casa). Permite registrar cuentas (bancos, efectivo, tarjetas de crédito, inversiones, préstamos…) y los movimientos de dinero entre ellas, y a partir de eso muestra cuánto tienes, cuánto debes, cuánto ganas, cuánto gastas y si vas cumpliendo tu meta de ahorro anual.
 
-> **Estado del proyecto:** en construcción. Este README describe el sistema completo tal como está especificado en [`docs/PROMPT-accountant-v2.md`](docs/PROMPT-accountant-v2.md), que es la especificación de referencia. La implementación avanza por fases (ver [Hoja de ruta](#14-hoja-de-ruta-fases)). **Fases completadas:** 1 (andamiaje: perfiles, Flyway V1, errores `ProblemDetail`, tema PrimeNG, i18n ES/EN, layout, Spotless/ESLint/Prettier) 2 (autenticación JWT con único administrador, administración de usuarios y monedas, paginado/filtros/orden genéricos y tablas sincronizadas con la URL) 3 (cuentas con jerarquía y validación de ciclos, edición manual de saldo, borrado lógico, líneas de crédito con fechas de corte/pago calculadas por cron y job diario, semilla de desarrollo) y 4 (motor de transacciones del backend: reglas, lote atómico con bloqueo pesimista, aplicación por lado (origen y destino), cuentas temporales y monto reportado, probado con los casos compartidos de `docs/transaction-cases.json`; el detalle está en [`docs/business-rules.md`](docs/business-rules.md)). El editor de lotes y los reportes llegan en las siguientes fases.
+> **Estado del proyecto:** en construcción. Este README describe el sistema completo tal como está especificado en [`docs/PROMPT-accountant-v2.md`](docs/PROMPT-accountant-v2.md), que es la especificación de referencia. La implementación avanza por fases (ver [Hoja de ruta](#14-hoja-de-ruta-fases)). **Fases completadas:** 1 (andamiaje: perfiles, Flyway V1, errores `ProblemDetail`, tema PrimeNG, i18n ES/EN, layout, Spotless/ESLint/Prettier) 2 (autenticación JWT con único administrador, administración de usuarios y monedas, paginado/filtros/orden genéricos y tablas sincronizadas con la URL) 3 (cuentas con jerarquía y validación de ciclos, edición manual de saldo, borrado lógico, líneas de crédito con fechas de corte/pago calculadas por cron y job diario, semilla de desarrollo) y 4 (motor de transacciones del backend: reglas, lote atómico con bloqueo pesimista, transacciones pendientes con su aplicación posterior, cuentas temporales y tipo de operación para reportes, probado con los casos compartidos de `docs/transaction-cases.json`; el detalle está en [`docs/business-rules.md`](docs/business-rules.md)). El editor de lotes y los reportes llegan en las siguientes fases.
 
 ---
 
@@ -225,19 +225,19 @@ docker compose up -d --build
 | **Saldo (`balance`)** | Dinero que hay en la cuenta (o, en DEBTOR, lo que debes; en CREDITOR, lo que te deben). Solo existe en tipos "con saldo". **Nunca puede ser negativo.** |
 | **Monto (`A`)** | Cantidad principal de la transacción. Siempre > 0. |
 | **Fee (`F`)** | Comisión, retención o cargo asociado. ≥ 0. Algunos tipos no lo permiten. |
-| **Tipo de operación** | `ADDITION` (ingreso), `SUBTRACTION` (gasto) o `NEUTER` (movimiento interno, no cuenta en reportes). |
-| **Monto reportado** | Lo que la transacción aporta a los reportes: el monto completo `A` si es ingreso o gasto, 0 si es movimiento interno. Las comisiones se suman aparte como gasto. |
-| **Origen / destino aplicado** | `origin_applied` / `destination_applied` indican si el monto ya se reflejó en cada cuenta. Un lado sin aplicar no cambia el saldo hasta que se aplica (con su fecha `origin_applied_at` / `destination_applied_at`). |
+| **Tipo de operación** | `ADDITION` (ingreso), `SUBTRACTION` (gasto) o `NEUTER` (movimiento interno: solo su comisión cuenta como gasto). |
+| **Monto para reportes** | Se calcula al consultar, no se guarda: ingreso `A − F`, gasto `A + F`; de un movimiento interno solo cuenta `F` como gasto. |
+| **Aplicada (`applied`)** | Indica si el efecto pendiente ya se reflejó. Una transacción pendiente no cambia ese saldo hasta que se aplica; `applied_at` guarda cuándo se aplicó. |
 | **Lote** | Conjunto de transacciones capturadas y guardadas juntas, de forma atómica. |
 
 Principios:
 
-1. **Ingreso cuando el dinero entra a tus cuentas, gasto cuando sale.** Comprar con tarjeta (DEBT → Consumo) no es gasto todavía: el dinero sigue en tus cuentas; el gasto aparece cuando pagas la tarjeta (PAYMENT). Un préstamo en efectivo (DEBT → Almacén) cuenta como ingreso porque el dinero entra a tus cuentas.
-2. **Los saldos solo suman y restan montos.** No hay acumulados auxiliares: cada transacción suma o resta su monto (y comisión) en las cuentas, según el lado esté aplicado.
+1. **El gasto se reconoce cuando consumes.** Una compra con tarjeta (EXPENSE Visa → Comida o DEBT Visa → Comida) es gasto el día de la compra; el pago de la tarjeta (PAYMENT) y un préstamo en efectivo (DEBT → Almacén) son movimientos internos, así no se cuenta el gasto dos veces.
+2. **Los saldos solo suman y restan montos.** No hay acumulados auxiliares: cada transacción suma o resta su monto (y comisión) en las cuentas; el efecto pendiente, solo al aplicarse.
 3. **Las transacciones guardadas no se editan ni se anulan.** El control está antes de guardar: el editor de lotes y su resumen.
 4. **No se reescribe el historial.** La fecha de una transacción no puede ser anterior a la última transacción guardada de las cuentas involucradas.
 5. **El backend es la fuente de verdad.** El frontend replica el cálculo solo para dar retroalimentación inmediata; el backend siempre vuelve a validar.
-6. **Los reportes usan la fecha de aplicación del lado que cuenta**: un gasto, la del origen; un ingreso, la del destino (o la del origen si no tiene destino). Lo no aplicado no cuenta todavía.
+6. **Los reportes usan la fecha de aplicación (`applied_at`)**. Lo pendiente no cuenta todavía.
 
 ## 8. Tipos de cuenta
 
@@ -257,12 +257,12 @@ Reglas de cuentas:
 - **Saldo**: GROUP, SUPPLIER y CONSUMER no tienen saldo. Los demás, saldo ≥ 0.
 - **Nombre único** por usuario y tipo.
 - **Jerarquía**: el padre debe aceptar el tipo hijo (tabla anterior) y **no se permiten ciclos** (una cuenta no puede colgar de sí misma ni de ningún descendiente).
-- **Cambio de tipo**: solo si la cuenta **no tiene movimientos**. Además, el nuevo tipo debe aceptar las sub-cuentas existentes, una cuenta con línea de crédito debe seguir siendo DEBTOR y, para cambiar a un tipo sin saldo, el saldo debe ser 0.
+- **Cambio de tipo**: libre si la cuenta no tiene sub-cuentas ni transacciones; si las tiene, solo entre **STORAGE e INVESTMENT**. Además, el nuevo tipo debe aceptar las sub-cuentas existentes, una cuenta con línea de crédito debe seguir siendo DEBTOR y, para cambiar a un tipo sin saldo, el saldo debe ser 0.
 - **Actualización**: al editar una cuenta solo se modifican los datos enviados; el resto se conserva y el identificador nunca cambia.
 - **Edición manual de saldo**: se puede corregir el saldo desde el formulario; se sobrescribe directamente **sin generar transacción** (útil para ajustes o saldo inicial).
 - **Estados**: `ACTIVE`, `DISABLED` (no usable, reactivable) y `DELETED` (borrado lógico; solo si el saldo es 0 y no tiene sub-cuentas activas).
 - **Incluir en balance**: decide si la cuenta suma en las tarjetas y totales del home.
-- **Cuentas temporales** (solo INVESTMENT y BUSINESS): cuando un `PROFIT` deja su saldo **exactamente en 0** y el origen ya está aplicado, la cuenta se **deshabilita automáticamente** (la inversión terminó). Si queda saldo, sigue activa. Se puede reactivar manualmente.
+- **Cuentas temporales** (solo INVESTMENT y BUSINESS): al aplicarse un `PROFIT` que sale de ella, la cuenta se **deshabilita automáticamente** (la inversión terminó), aunque quede saldo remanente. Se puede reactivar manualmente.
 - **Moneda**: es **ilustrativa** (se muestra junto al saldo). No hay conversión ni validación de monedas entre cuentas.
 
 ### 8.1 Crédito (solo DEBTOR)
@@ -283,7 +283,7 @@ Notación: `A` = monto, `F` = fee (comisión o impuesto). El detalle completo es
 | Tipo | Significado | Origen | Destino |
 |---|---|---|---|
 | `INCOME` | Ingreso (sueldo, cobro a cliente) | SUPPLIER | STORAGE (obligatorio) |
-| `EXPENSE` | Gasto pagado con dinero propio | STORAGE | CONSUMER (obligatorio) |
+| `EXPENSE` | Gasto, con dinero propio o con tarjeta | STORAGE, DEBTOR | CONSUMER (obligatorio) |
 | `TRANSFER` | Mover dinero entre cuentas propias | STORAGE | STORAGE (obligatorio) |
 | `INVEST` | Invertir | STORAGE, INVESTMENT | INVESTMENT, BUSINESS (obligatorio) |
 | `PROFIT` | Retirar los recursos de una inversión o negocio | INVESTMENT, BUSINESS | STORAGE, INVESTMENT (obligatorio) |
@@ -298,13 +298,14 @@ Siempre: origen ≠ destino, ambas cuentas activas y del usuario.
 
 ### 9.2 Efecto sobre los saldos
 
-Cada lado cambia **solo cuando está aplicado**.
+*(pendiente)* = ese efecto solo ocurre cuando la transacción está aplicada.
 
 | Tipo | Validaciones | Origen | Destino |
 |---|---|---|---|
 | INCOME | `F < A` | — (sin saldo) | `+ (A − F)` |
-| EXPENSE | fondos ≥ `A + F` | `− (A + F)` | — (sin saldo) |
-| TRANSFER / INVEST / PROFIT | fondos ≥ `A`; `F < A` | `− A` | `+ (A − F)` |
+| EXPENSE desde STORAGE | fondos ≥ `A + F` | `− (A + F)` *(pendiente)* | — (sin saldo) |
+| EXPENSE desde DEBTOR | límite de crédito | `+ (A + F)` *(pendiente)* | — (sin saldo) |
+| TRANSFER / INVEST / PROFIT | fondos ≥ `A`; `F < A` | `− A` (inmediato) | `+ (A − F)` *(pendiente)* |
 | DIVIDEND | `F < A` | sin destino: `+ (A − F)` | con destino: `+ (A − F)` |
 | INTEREST (no DEBTOR) | fondos ≥ `A`; sin fee | `− A` | — |
 | INTEREST (DEBTOR) | límite de crédito; sin fee | `+ A` la deuda crece | — |
@@ -314,42 +315,40 @@ Cada lado cambia **solo cuando está aplicado**.
 | DEBT → CONSUMER | límite de crédito; sin fee | `+ A` | — (sin saldo) |
 | PAYMENT | fondos ≥ `A + F`; `A` ≤ deuda | `− (A + F)` | `− A` |
 
-### 9.3 Lados que pueden quedar sin aplicar
+### 9.3 Transacciones pendientes
 
-| Tipo | Origen sin aplicar | Destino sin aplicar |
+Cada transacción tiene un solo indicador **aplicada** (por defecto sí). Solo pueden quedar pendientes:
+
+| Tipo | Queda pendiente | Se aplica de inmediato |
 |---|---|---|
-| EXPENSE | sí | — |
-| TRANSFER, INVEST, PROFIT | sí | sí |
-| DIVIDEND (con destino) | — | sí |
-| Los demás | no | no |
+| EXPENSE (desde STORAGE o DEBTOR) | el cargo al origen | — |
+| TRANSFER, INVEST, PROFIT | el abono al destino | el cargo al origen |
+| Los demás (incluido PAYMENT) | — | todo |
 
-Ejemplo: un retiro de una SOFIPO se solicita hoy y se refleja horas después. Se registra un PROFIT con **ambos lados sin aplicar** (los saldos no cambian); cuando el dinero llega, **Aplicar** resta en el origen y suma en el destino. Los fondos o el límite de crédito se validan en el momento en que se aplica el origen.
+Ejemplo: un retiro de una SOFIPO se solicita hoy y se refleja horas después. Se registra un PROFIT pendiente: el origen se descuenta en ese momento y el destino no cambia; cuando el dinero llega, **Aplicar** suma en el destino. Los fondos o el límite de crédito del efecto pendiente se validan al aplicarlo.
 
 ### 9.4 ¿Cuenta como ingreso o gasto?
 
-| Tipo / variante | Tipo de operación | Monto reportado |
+| Tipo / variante | Tipo de operación | Cuenta en reportes |
 |---|---|---|
-| INCOME, DIVIDEND, DEBT → STORAGE | ADDITION (entra dinero a tus cuentas) | `A` |
-| EXPENSE, PAYMENT, INTEREST (no DEBTOR) | SUBTRACTION (sale dinero de tus cuentas) | `A` |
-| DEBT → CONSUMER, INTEREST sobre DEBTOR | NEUTER (deuda que se pagará después) | 0 |
-| TRANSFER, INVEST, PROFIT, BORROW, COLLECTION | NEUTER (movimiento entre tus cuentas) | 0 |
+| INCOME, DIVIDEND | ADDITION | ingreso `A − F` |
+| EXPENSE (desde STORAGE o DEBTOR), INTEREST, DEBT → CONSUMER | SUBTRACTION | gasto `A + F` |
+| DEBT → STORAGE, PAYMENT, TRANSFER, INVEST, PROFIT, BORROW, COLLECTION | NEUTER | solo `F` como gasto |
 
-**Comisiones**: toda comisión (`F`) se reporta como **gasto** en un concepto "Comisiones" que solo existe en el reporte (no hay cuenta en la base de datos), en la fecha en que se aplica el lado que la paga: el origen en EXPENSE y PAYMENT; el que recibe en los demás.
+Las comisiones de las NEUTER aparecen en un concepto "Comisiones" que solo existe en el reporte (no hay cuenta en la base de datos). Todo cuenta en la fecha `applied_at`.
 
-Ejemplo con una tarjeta "Visa" y el Banco:
-
-| Paso | Transacción | Deuda Visa | Banco | Reporte |
+| Escenario | Transacciones | Ingreso | Gasto | Neto |
 |---|---|---|---|---|
-| 1 | DEBT Visa → Comida, 1,000 (compra a crédito) | 1,000 | — | nada (el dinero sigue en tus cuentas) |
-| 2 | DEBT Visa → Banco, 2,000, comisión 50 (disposición) | 3,000 | + 1,950 | ingreso 2,000; gasto 50 (comisión) |
-| 3 | INTEREST Visa, 30 | 3,030 | — | nada |
-| 4 | PAYMENT Banco → Visa, 3,030 | 0 | − 3,030 | gasto 3,030 |
+| Préstamo en efectivo usado y pagado | DEBT → STORAGE 10,000 → EXPENSE 10,000 → PAYMENT 10,000 | 0 | 10,000 | −10,000 |
+| Préstamo en efectivo devuelto sin usar | DEBT → STORAGE 10,000 → PAYMENT 10,000 | 0 | 0 | 0 |
+| Compra con TDC y pago | EXPENSE Visa → Comida 10,000 → PAYMENT 10,000 | 0 | 10,000 | −10,000 |
+| Compra a crédito y pago | DEBT Visa → Comida 10,000 → PAYMENT 10,000 | 0 | 10,000 | −10,000 |
+| Interés de la TDC y pago | INTEREST Visa 500 → PAYMENT 500 | 0 | 500 | −500 |
+| Pago con comisión | PAYMENT 10,000 con comisión 50 | 0 | 50 | −50 |
 
-Neto: 2,000 − 3,080 = −1,080 = compra (1,000) + comisión (50) + interés (30).
+### 9.5 Aplicar transacciones pendientes
 
-### 9.5 Aplicar lados pendientes
-
-`PATCH /transactions/{id}/apply` aplica todos los lados pendientes; `?side=ORIGIN` o `?side=DESTINATION` aplica uno solo. Al aplicar el origen se validan fondos o límite de crédito. Cada lado aplicado guarda su fecha (`origin_applied_at` / `destination_applied_at`) y sus saldos antes/después de ese momento. Aplicar dos veces no tiene efecto.
+`PATCH /transactions/{id}/apply` aplica el efecto pendiente: valida fondos o límite de crédito, guarda `applied_at` y sobrescribe los saldos antes/después de la cuenta afectada con los de ese momento. Un PROFIT de una cuenta temporal la deshabilita al aplicarse. Aplicar dos veces no tiene efecto.
 
 ### 9.6 Errores de negocio
 
@@ -361,7 +360,7 @@ Neto: 2,000 − 3,080 = −1,080 = compra (1,000) + comisión (50) + interés (3
 | `DATE_BEFORE_LAST_TRANSACTION` | La fecha es anterior a la última transacción guardada de alguna cuenta |
 | `ACCOUNT_DISABLED` | Se usa una cuenta deshabilitada (p. ej. temporal tras su PROFIT) |
 | `ACCOUNT_NOT_DELETABLE` | Borrar una cuenta con saldo o con sub-cuentas |
-| `TRANSACTION_NOT_SUPPORTED` | Aplicar el destino de una transacción que no tiene destino |
+| `TRANSACTION_NOT_SUPPORTED` | Aplicar una transacción cuyo tipo no admite pendiente |
 | `CONFLICT` | Una cuenta cambió mientras se guardaba el lote |
 
 ## 10. Motor de cálculo y editor de lotes
@@ -430,14 +429,14 @@ El corazón de la aplicación es el **editor de lotes**:
    2. Elige **origen** y **destino**: los selectores solo muestran cuentas válidas para ese tipo, con su saldo proyectado.
    3. Captura **monto** y, si aplica, **fee** (o usa "usar saldo total").
    4. Elige la **fecha** (no puede ser anterior a la última transacción guardada de esas cuentas).
-   5. Si el tipo lo permite, indica si el monto **ya se reflejó** en el origen y en el destino.
+   5. Si el tipo lo permite (EXPENSE, TRANSFER, INVEST, PROFIT), indica si el movimiento **ya se reflejó** o queda pendiente.
    6. La **descripción** se autogenera ("Gasto Banco → Comida"); puedes editarla.
    7. Revisa la vista previa de saldos antes → después y presiona **Agregar**.
-3. Repite para todas las transacciones del lote. La tabla muestra cada una con sus saldos antes/después y el monto reportado. Puedes editar o eliminar cualquiera; todo se recalcula.
+3. Repite para todas las transacciones del lote. La tabla muestra cada una con sus saldos antes/después y su tipo de operación. Puedes editar o eliminar cualquiera; todo se recalcula.
 4. (Opcional) Desde el panel de **programadas aplicables**, usa **Aplicar** para agregar una recurrente.
 5. Presiona **Revisar**, verifica cuentas afectadas, totales y avisos.
 6. Presiona **Guardar**. Si todo es válido, el lote se guarda completo y el borrador se limpia; si algo falla, no se guarda nada y se indica qué transacción falló.
-7. Para transacciones con algún lado **sin aplicar**, usa **Aplicar** en el listado de transacciones o en el detalle de la cuenta cuando el movimiento se refleje.
+7. Para transacciones **pendientes**, usa **Aplicar** en el listado de transacciones o en el detalle de la cuenta cuando el movimiento se refleje.
 
 Ejemplos rápidos:
 
@@ -445,7 +444,7 @@ Ejemplos rápidos:
 |---|---|---|
 | Me pagaron la quincena | INCOME | Empleador → Banco |
 | Pagué el súper con débito | EXPENSE | Banco → Comida |
-| Pagué el súper con tarjeta de crédito | DEBT | Visa → Comida |
+| Pagué el súper con tarjeta de crédito | EXPENSE (o DEBT) | Visa → Comida |
 | Pagué la tarjeta | PAYMENT | Banco → Visa |
 | Retiré efectivo del cajero | TRANSFER | Banco → Efectivo |
 | Metí dinero a CETES | INVEST | Banco → CETES |

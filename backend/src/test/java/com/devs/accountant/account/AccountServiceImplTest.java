@@ -248,15 +248,17 @@ class AccountServiceImplTest {
     }
 
     @Test
-    void typeCannotChangeOnceTheAccountHasTransactions() {
+    void withTransactionsTheTypeOnlySwitchesBetweenStorageAndInvestment() {
         Account account = existing(1L, AccountType.STORAGE, "100");
         when(accountRepository.hasTransactions(1L)).thenReturn(true);
 
         assertFieldError(
-                () -> service.update(1L, type(AccountType.INVESTMENT)),
+                () -> service.update(1L, type(AccountType.CREDITOR)),
                 "type",
                 AccountServiceImpl.TYPE_CHANGE_NOT_ALLOWED);
         assertThat(account.getType()).isEqualTo(AccountType.STORAGE);
+        service.update(1L, type(AccountType.INVESTMENT));
+        assertThat(account.getType()).isEqualTo(AccountType.INVESTMENT);
         // the rest of the account can still be edited
         AccountUpdateRequest rename = new AccountUpdateRequest();
         rename.setName("Banco principal");

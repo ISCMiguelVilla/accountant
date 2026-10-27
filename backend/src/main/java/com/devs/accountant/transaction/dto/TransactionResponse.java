@@ -8,7 +8,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-/** {@code destinationApplied} / {@code destinationAppliedAt} are null when there is no destination. */
 public record TransactionResponse(
         Long id,
         UUID uuid,
@@ -22,16 +21,12 @@ public record TransactionResponse(
         CurrencyOption currency,
         BigDecimal amount,
         BigDecimal fee,
-        BigDecimal reportedAmount,
         String description,
         BigDecimal originBalanceBefore,
         BigDecimal originBalanceAfter,
         BigDecimal destinationBalanceBefore,
         BigDecimal destinationBalanceAfter,
+        boolean applied,
         LocalDateTime operationDate,
-        boolean originApplied,
-        LocalDateTime originAppliedAt,
-        Boolean destinationApplied,
-        LocalDateTime destinationAppliedAt,
-        boolean fullyApplied,
+        LocalDateTime appliedAt,
         LocalDateTime createdAt) {}

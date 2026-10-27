@@ -1,157 +1,332 @@
 {
-  "version": 2,
-  "description": "Shared test cases of the transaction engine (backend Java and frontend TypeScript). Amounts are strings with 2 decimals. Defaults: account status ACTIVE, temporary false, creditLimit null; transaction fee 0.00, originApplied true, destinationApplied true, operationDate 2026-10-01T12:00:00, destination null. Each case expects either 'expected' (accounts and transactions to check, matched by id / uuid; transactions listed in application order) or 'error' (first failing transaction; field/fieldCode only for VALIDATION_ERROR). reportedAmount is the full amount for ADDITION / SUBTRACTION and 0 for NEUTER; fees are reported separately by the reports.",
+  "version": 3,
+  "description": "Shared test cases of the transaction engine (backend Java and frontend TypeScript), PROMPT draft 6. Amounts are strings with 2 decimals. Defaults: account status ACTIVE, temporary false, creditLimit null; transaction fee 0.00, applied true, operationDate 2026-10-01T12:00:00, destination null. Each case expects either 'expected' (accounts and transactions to check, matched by id / uuid; transactions listed in application order; optional 'report' = income / expense / net of the applied transactions: ADDITION counts amount − fee, SUBTRACTION amount + fee, NEUTER only its fee as expense) or 'error' (first failing transaction; field/fieldCode only for VALIDATION_ERROR).",
   "cases": [
     {
-      "name": "INCOME credits amount minus fee; reported as income for the full amount",
+      "name": "INCOME credits amount minus fee; income = amount − fee",
       "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "1000.00" },
-        { "id": 3, "type": "SUPPLIER" }
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "1000.00"
+        },
+        {
+          "id": 3,
+          "type": "SUPPLIER"
+        }
       ],
       "transactions": [
-        { "uuid": "t1", "type": "INCOME", "origin": 3, "destination": 1, "amount": "1000.00", "fee": "50.00" }
+        {
+          "uuid": "t1",
+          "type": "INCOME",
+          "origin": 3,
+          "destination": 1,
+          "amount": "1000.00",
+          "fee": "50.00"
+        }
       ],
       "expected": {
-        "accounts": [{ "id": 1, "balance": "1950.00", "status": "ACTIVE" }],
+        "accounts": [
+          {
+            "id": 1,
+            "balance": "1950.00",
+            "status": "ACTIVE"
+          }
+        ],
         "transactions": [
           {
             "uuid": "t1",
             "operationType": "ADDITION",
-            "reportedAmount": "1000.00",
             "originBalanceBefore": null,
             "originBalanceAfter": null,
             "destinationBalanceBefore": "1000.00",
             "destinationBalanceAfter": "1950.00"
           }
-        ]
+        ],
+        "report": {
+          "income": "950.00",
+          "expense": "0.00",
+          "net": "950.00"
+        }
       }
     },
     {
       "name": "INCOME fee must be lower than the amount",
       "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "0.00" },
-        { "id": 3, "type": "SUPPLIER" }
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "0.00"
+        },
+        {
+          "id": 3,
+          "type": "SUPPLIER"
+        }
       ],
       "transactions": [
-        { "uuid": "t1", "type": "INCOME", "origin": 3, "destination": 1, "amount": "100.00", "fee": "100.00" }
+        {
+          "uuid": "t1",
+          "type": "INCOME",
+          "origin": 3,
+          "destination": 1,
+          "amount": "100.00",
+          "fee": "100.00"
+        }
       ],
-      "error": { "code": "VALIDATION_ERROR", "transactionUuid": "t1", "field": "fee", "fieldCode": "FEE_NOT_BELOW_AMOUNT" }
+      "error": {
+        "code": "VALIDATION_ERROR",
+        "transactionUuid": "t1",
+        "field": "fee",
+        "fieldCode": "FEE_NOT_BELOW_AMOUNT"
+      }
     },
     {
-      "name": "INCOME origin cannot stay unapplied",
+      "name": "INCOME cannot be pending",
       "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "0.00" },
-        { "id": 3, "type": "SUPPLIER" }
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "0.00"
+        },
+        {
+          "id": 3,
+          "type": "SUPPLIER"
+        }
       ],
       "transactions": [
-        { "uuid": "t1", "type": "INCOME", "origin": 3, "destination": 1, "amount": "100.00", "originApplied": false }
+        {
+          "uuid": "t1",
+          "type": "INCOME",
+          "origin": 3,
+          "destination": 1,
+          "amount": "100.00",
+          "applied": false
+        }
       ],
-      "error": { "code": "VALIDATION_ERROR", "transactionUuid": "t1", "field": "originApplied", "fieldCode": "PENDING_NOT_ALLOWED" }
-    },
-    {
-      "name": "INCOME destination cannot stay unapplied",
-      "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "0.00" },
-        { "id": 3, "type": "SUPPLIER" }
-      ],
-      "transactions": [
-        { "uuid": "t1", "type": "INCOME", "origin": 3, "destination": 1, "amount": "100.00", "destinationApplied": false }
-      ],
-      "error": { "code": "VALIDATION_ERROR", "transactionUuid": "t1", "field": "destinationApplied", "fieldCode": "PENDING_NOT_ALLOWED" }
+      "error": {
+        "code": "VALIDATION_ERROR",
+        "transactionUuid": "t1",
+        "field": "applied",
+        "fieldCode": "PENDING_NOT_ALLOWED"
+      }
     },
     {
       "name": "INCOME origin must be a SUPPLIER",
       "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "100.00" },
-        { "id": 2, "type": "STORAGE", "balance": "0.00" }
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "100.00"
+        },
+        {
+          "id": 2,
+          "type": "STORAGE",
+          "balance": "0.00"
+        }
       ],
-      "transactions": [{ "uuid": "t1", "type": "INCOME", "origin": 2, "destination": 1, "amount": "10.00" }],
-      "error": { "code": "VALIDATION_ERROR", "transactionUuid": "t1", "field": "originAccountId", "fieldCode": "ORIGIN_NOT_ALLOWED" }
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "INCOME",
+          "origin": 2,
+          "destination": 1,
+          "amount": "10.00"
+        }
+      ],
+      "error": {
+        "code": "VALIDATION_ERROR",
+        "transactionUuid": "t1",
+        "field": "originAccountId",
+        "fieldCode": "ORIGIN_NOT_ALLOWED"
+      }
     },
     {
       "name": "A GROUP never participates in transactions",
       "accounts": [
-        { "id": 3, "type": "SUPPLIER" },
-        { "id": 11, "type": "GROUP" }
-      ],
-      "transactions": [{ "uuid": "t1", "type": "INCOME", "origin": 3, "destination": 11, "amount": "10.00" }],
-      "error": { "code": "VALIDATION_ERROR", "transactionUuid": "t1", "field": "destinationAccountId", "fieldCode": "DESTINATION_NOT_ALLOWED" }
-    },
-    {
-      "name": "EXPENSE subtracts amount plus fee from the STORAGE; reported as expense for the amount",
-      "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "1000.00" },
-        { "id": 4, "type": "CONSUMER" }
+        {
+          "id": 3,
+          "type": "SUPPLIER"
+        },
+        {
+          "id": 11,
+          "type": "GROUP"
+        }
       ],
       "transactions": [
-        { "uuid": "t1", "type": "EXPENSE", "origin": 1, "destination": 4, "amount": "200.00", "fee": "10.00" }
+        {
+          "uuid": "t1",
+          "type": "INCOME",
+          "origin": 3,
+          "destination": 11,
+          "amount": "10.00"
+        }
+      ],
+      "error": {
+        "code": "VALIDATION_ERROR",
+        "transactionUuid": "t1",
+        "field": "destinationAccountId",
+        "fieldCode": "DESTINATION_NOT_ALLOWED"
+      }
+    },
+    {
+      "name": "EXPENSE from STORAGE subtracts amount plus fee; expense = amount + fee",
+      "accounts": [
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "1000.00"
+        },
+        {
+          "id": 4,
+          "type": "CONSUMER"
+        }
+      ],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "EXPENSE",
+          "origin": 1,
+          "destination": 4,
+          "amount": "200.00",
+          "fee": "10.00"
+        }
       ],
       "expected": {
-        "accounts": [{ "id": 1, "balance": "790.00", "status": "ACTIVE" }],
+        "accounts": [
+          {
+            "id": 1,
+            "balance": "790.00",
+            "status": "ACTIVE"
+          }
+        ],
         "transactions": [
           {
             "uuid": "t1",
             "operationType": "SUBTRACTION",
-            "reportedAmount": "200.00",
             "originBalanceBefore": "1000.00",
             "originBalanceAfter": "790.00",
             "destinationBalanceBefore": null,
             "destinationBalanceAfter": null
           }
-        ]
+        ],
+        "report": {
+          "income": "0.00",
+          "expense": "210.00",
+          "net": "-210.00"
+        }
       }
     },
     {
-      "name": "EXPENSE without enough funds",
+      "name": "EXPENSE from STORAGE without enough funds",
       "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "100.00" },
-        { "id": 4, "type": "CONSUMER" }
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "100.00"
+        },
+        {
+          "id": 4,
+          "type": "CONSUMER"
+        }
       ],
       "transactions": [
-        { "uuid": "t1", "type": "EXPENSE", "origin": 1, "destination": 4, "amount": "100.00", "fee": "1.00" }
+        {
+          "uuid": "t1",
+          "type": "EXPENSE",
+          "origin": 1,
+          "destination": 4,
+          "amount": "100.00",
+          "fee": "1.00"
+        }
       ],
-      "error": { "code": "INSUFFICIENT_FUNDS", "transactionUuid": "t1" }
+      "error": {
+        "code": "INSUFFICIENT_FUNDS",
+        "transactionUuid": "t1"
+      }
     },
     {
-      "name": "EXPENSE with the origin unapplied does not touch the balance yet",
+      "name": "Pending EXPENSE from STORAGE does not touch the balance and does not count in reports yet",
       "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "1000.00" },
-        { "id": 4, "type": "CONSUMER" }
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "1000.00"
+        },
+        {
+          "id": 4,
+          "type": "CONSUMER"
+        }
       ],
       "transactions": [
-        { "uuid": "t1", "type": "EXPENSE", "origin": 1, "destination": 4, "amount": "300.00", "originApplied": false }
+        {
+          "uuid": "t1",
+          "type": "EXPENSE",
+          "origin": 1,
+          "destination": 4,
+          "amount": "300.00",
+          "applied": false
+        }
       ],
       "expected": {
-        "accounts": [{ "id": 1, "balance": "1000.00", "status": "ACTIVE" }],
+        "accounts": [
+          {
+            "id": 1,
+            "balance": "1000.00",
+            "status": "ACTIVE"
+          }
+        ],
         "transactions": [
           {
             "uuid": "t1",
             "operationType": "SUBTRACTION",
-            "reportedAmount": "300.00",
             "originBalanceBefore": "1000.00",
             "originBalanceAfter": "1000.00",
             "destinationBalanceBefore": null,
             "destinationBalanceAfter": null
           }
-        ]
+        ],
+        "report": {
+          "income": "0.00",
+          "expense": "0.00",
+          "net": "0.00"
+        }
       }
     },
     {
-      "name": "EXPENSE with the origin unapplied is accepted without funds: they are validated when the origin is applied",
+      "name": "Pending EXPENSE is accepted without funds: they are validated when it is applied",
       "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "100.00" },
-        { "id": 4, "type": "CONSUMER" }
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "100.00"
+        },
+        {
+          "id": 4,
+          "type": "CONSUMER"
+        }
       ],
       "transactions": [
-        { "uuid": "t1", "type": "EXPENSE", "origin": 1, "destination": 4, "amount": "500.00", "originApplied": false }
+        {
+          "uuid": "t1",
+          "type": "EXPENSE",
+          "origin": 1,
+          "destination": 4,
+          "amount": "500.00",
+          "applied": false
+        }
       ],
       "expected": {
-        "accounts": [{ "id": 1, "balance": "100.00", "status": "ACTIVE" }],
+        "accounts": [
+          {
+            "id": 1,
+            "balance": "100.00",
+            "status": "ACTIVE"
+          }
+        ],
         "transactions": [
           {
             "uuid": "t1",
             "operationType": "SUBTRACTION",
-            "reportedAmount": "500.00",
             "originBalanceBefore": "100.00",
             "originBalanceAfter": "100.00",
             "destinationBalanceBefore": null,
@@ -161,109 +336,212 @@
       }
     },
     {
-      "name": "EXPENSE cannot come from a DEBTOR (purchases on credit are DEBT to CONSUMER)",
+      "name": "EXPENSE from DEBTOR (credit card purchase) grows the debt; it is an expense the day of the purchase",
       "accounts": [
-        { "id": 5, "type": "DEBTOR", "balance": "0.00", "creditLimit": "5000.00" },
-        { "id": 4, "type": "CONSUMER" }
+        {
+          "id": 5,
+          "type": "DEBTOR",
+          "balance": "0.00",
+          "creditLimit": "5000.00"
+        },
+        {
+          "id": 4,
+          "type": "CONSUMER"
+        }
       ],
-      "transactions": [{ "uuid": "t1", "type": "EXPENSE", "origin": 5, "destination": 4, "amount": "100.00" }],
-      "error": { "code": "VALIDATION_ERROR", "transactionUuid": "t1", "field": "originAccountId", "fieldCode": "ORIGIN_NOT_ALLOWED" }
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "EXPENSE",
+          "origin": 5,
+          "destination": 4,
+          "amount": "1200.00",
+          "fee": "5.00"
+        }
+      ],
+      "expected": {
+        "accounts": [
+          {
+            "id": 5,
+            "balance": "1205.00",
+            "status": "ACTIVE"
+          }
+        ],
+        "transactions": [
+          {
+            "uuid": "t1",
+            "operationType": "SUBTRACTION",
+            "originBalanceBefore": "0.00",
+            "originBalanceAfter": "1205.00",
+            "destinationBalanceBefore": null,
+            "destinationBalanceAfter": null
+          }
+        ],
+        "report": {
+          "income": "0.00",
+          "expense": "1205.00",
+          "net": "-1205.00"
+        }
+      }
+    },
+    {
+      "name": "EXPENSE from DEBTOR cannot exceed the credit limit",
+      "accounts": [
+        {
+          "id": 5,
+          "type": "DEBTOR",
+          "balance": "4900.00",
+          "creditLimit": "5000.00"
+        },
+        {
+          "id": 4,
+          "type": "CONSUMER"
+        }
+      ],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "EXPENSE",
+          "origin": 5,
+          "destination": 4,
+          "amount": "100.00",
+          "fee": "1.00"
+        }
+      ],
+      "error": {
+        "code": "CREDIT_LIMIT_EXCEEDED",
+        "transactionUuid": "t1"
+      }
+    },
+    {
+      "name": "EXPENSE from a DEBTOR without credit line has no limit",
+      "accounts": [
+        {
+          "id": 9,
+          "type": "DEBTOR",
+          "balance": "1000.00"
+        },
+        {
+          "id": 4,
+          "type": "CONSUMER"
+        }
+      ],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "EXPENSE",
+          "origin": 9,
+          "destination": 4,
+          "amount": "1000000.00"
+        }
+      ],
+      "expected": {
+        "accounts": [
+          {
+            "id": 9,
+            "balance": "1001000.00",
+            "status": "ACTIVE"
+          }
+        ],
+        "transactions": [
+          {
+            "uuid": "t1",
+            "operationType": "SUBTRACTION",
+            "originBalanceBefore": "1000.00",
+            "originBalanceAfter": "1001000.00",
+            "destinationBalanceBefore": null,
+            "destinationBalanceAfter": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "Pending EXPENSE from DEBTOR does not grow the debt yet",
+      "accounts": [
+        {
+          "id": 5,
+          "type": "DEBTOR",
+          "balance": "0.00",
+          "creditLimit": "5000.00"
+        },
+        {
+          "id": 4,
+          "type": "CONSUMER"
+        }
+      ],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "EXPENSE",
+          "origin": 5,
+          "destination": 4,
+          "amount": "500.00",
+          "applied": false
+        }
+      ],
+      "expected": {
+        "accounts": [
+          {
+            "id": 5,
+            "balance": "0.00",
+            "status": "ACTIVE"
+          }
+        ],
+        "transactions": [
+          {
+            "uuid": "t1",
+            "operationType": "SUBTRACTION",
+            "originBalanceBefore": "0.00",
+            "originBalanceAfter": "0.00",
+            "destinationBalanceBefore": null,
+            "destinationBalanceAfter": null
+          }
+        ]
+      }
     },
     {
       "name": "EXPENSE destination must be a CONSUMER",
       "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "1000.00" },
-        { "id": 2, "type": "STORAGE", "balance": "0.00" }
-      ],
-      "transactions": [{ "uuid": "t1", "type": "EXPENSE", "origin": 1, "destination": 2, "amount": "10.00" }],
-      "error": { "code": "VALIDATION_ERROR", "transactionUuid": "t1", "field": "destinationAccountId", "fieldCode": "DESTINATION_NOT_ALLOWED" }
-    },
-    {
-      "name": "TRANSFER subtracts A from the origin and credits A minus fee",
-      "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "1000.00" },
-        { "id": 2, "type": "STORAGE", "balance": "500.00" }
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "1000.00"
+        },
+        {
+          "id": 2,
+          "type": "STORAGE",
+          "balance": "0.00"
+        }
       ],
       "transactions": [
-        { "uuid": "t1", "type": "TRANSFER", "origin": 1, "destination": 2, "amount": "300.00", "fee": "5.00" }
+        {
+          "uuid": "t1",
+          "type": "EXPENSE",
+          "origin": 1,
+          "destination": 2,
+          "amount": "10.00"
+        }
       ],
-      "expected": {
-        "accounts": [
-          { "id": 1, "balance": "700.00", "status": "ACTIVE" },
-          { "id": 2, "balance": "795.00", "status": "ACTIVE" }
-        ],
-        "transactions": [
-          {
-            "uuid": "t1",
-            "operationType": "NEUTER",
-            "reportedAmount": "0.00",
-            "originBalanceBefore": "1000.00",
-            "originBalanceAfter": "700.00",
-            "destinationBalanceBefore": "500.00",
-            "destinationBalanceAfter": "795.00"
-          }
-        ]
+      "error": {
+        "code": "VALIDATION_ERROR",
+        "transactionUuid": "t1",
+        "field": "destinationAccountId",
+        "fieldCode": "DESTINATION_NOT_ALLOWED"
       }
     },
     {
-      "name": "TRANSFER with the destination unapplied: money in transit",
+      "name": "TRANSFER moves A immediately and credits A minus fee; only the fee is an expense",
       "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "1000.00" },
-        { "id": 2, "type": "STORAGE", "balance": "500.00" }
-      ],
-      "transactions": [
-        { "uuid": "t1", "type": "TRANSFER", "origin": 1, "destination": 2, "amount": "300.00", "destinationApplied": false }
-      ],
-      "expected": {
-        "accounts": [
-          { "id": 1, "balance": "700.00", "status": "ACTIVE" },
-          { "id": 2, "balance": "500.00", "status": "ACTIVE" }
-        ],
-        "transactions": [
-          {
-            "uuid": "t1",
-            "operationType": "NEUTER",
-            "reportedAmount": "0.00",
-            "originBalanceBefore": "1000.00",
-            "originBalanceAfter": "700.00",
-            "destinationBalanceBefore": "500.00",
-            "destinationBalanceAfter": "500.00"
-          }
-        ]
-      }
-    },
-    {
-      "name": "TRANSFER with the origin unapplied: only the destination changes",
-      "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "1000.00" },
-        { "id": 2, "type": "STORAGE", "balance": "500.00" }
-      ],
-      "transactions": [
-        { "uuid": "t1", "type": "TRANSFER", "origin": 1, "destination": 2, "amount": "300.00", "originApplied": false }
-      ],
-      "expected": {
-        "accounts": [
-          { "id": 1, "balance": "1000.00", "status": "ACTIVE" },
-          { "id": 2, "balance": "800.00", "status": "ACTIVE" }
-        ],
-        "transactions": [
-          {
-            "uuid": "t1",
-            "operationType": "NEUTER",
-            "reportedAmount": "0.00",
-            "originBalanceBefore": "1000.00",
-            "originBalanceAfter": "1000.00",
-            "destinationBalanceBefore": "500.00",
-            "destinationBalanceAfter": "800.00"
-          }
-        ]
-      }
-    },
-    {
-      "name": "TRANSFER with both sides unapplied changes nothing yet",
-      "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "1000.00" },
-        { "id": 2, "type": "STORAGE", "balance": "500.00" }
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "1000.00"
+        },
+        {
+          "id": 2,
+          "type": "STORAGE",
+          "balance": "500.00"
+        }
       ],
       "transactions": [
         {
@@ -272,22 +550,82 @@
           "origin": 1,
           "destination": 2,
           "amount": "300.00",
-          "originApplied": false,
-          "destinationApplied": false
+          "fee": "5.00"
         }
       ],
       "expected": {
         "accounts": [
-          { "id": 1, "balance": "1000.00", "status": "ACTIVE" },
-          { "id": 2, "balance": "500.00", "status": "ACTIVE" }
+          {
+            "id": 1,
+            "balance": "700.00",
+            "status": "ACTIVE"
+          },
+          {
+            "id": 2,
+            "balance": "795.00",
+            "status": "ACTIVE"
+          }
         ],
         "transactions": [
           {
             "uuid": "t1",
             "operationType": "NEUTER",
-            "reportedAmount": "0.00",
             "originBalanceBefore": "1000.00",
-            "originBalanceAfter": "1000.00",
+            "originBalanceAfter": "700.00",
+            "destinationBalanceBefore": "500.00",
+            "destinationBalanceAfter": "795.00"
+          }
+        ],
+        "report": {
+          "income": "0.00",
+          "expense": "5.00",
+          "net": "-5.00"
+        }
+      }
+    },
+    {
+      "name": "Pending TRANSFER: money leaves the origin, the destination is credited when applied",
+      "accounts": [
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "1000.00"
+        },
+        {
+          "id": 2,
+          "type": "STORAGE",
+          "balance": "500.00"
+        }
+      ],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "TRANSFER",
+          "origin": 1,
+          "destination": 2,
+          "amount": "300.00",
+          "applied": false
+        }
+      ],
+      "expected": {
+        "accounts": [
+          {
+            "id": 1,
+            "balance": "700.00",
+            "status": "ACTIVE"
+          },
+          {
+            "id": 2,
+            "balance": "500.00",
+            "status": "ACTIVE"
+          }
+        ],
+        "transactions": [
+          {
+            "uuid": "t1",
+            "operationType": "NEUTER",
+            "originBalanceBefore": "1000.00",
+            "originBalanceAfter": "700.00",
             "destinationBalanceBefore": "500.00",
             "destinationBalanceAfter": "500.00"
           }
@@ -297,41 +635,120 @@
     {
       "name": "TRANSFER without enough funds",
       "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "100.00" },
-        { "id": 2, "type": "STORAGE", "balance": "0.00" }
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "100.00"
+        },
+        {
+          "id": 2,
+          "type": "STORAGE",
+          "balance": "0.00"
+        }
       ],
-      "transactions": [{ "uuid": "t1", "type": "TRANSFER", "origin": 1, "destination": 2, "amount": "150.00" }],
-      "error": { "code": "INSUFFICIENT_FUNDS", "transactionUuid": "t1" }
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "TRANSFER",
+          "origin": 1,
+          "destination": 2,
+          "amount": "150.00"
+        }
+      ],
+      "error": {
+        "code": "INSUFFICIENT_FUNDS",
+        "transactionUuid": "t1"
+      }
     },
     {
       "name": "TRANSFER requires a destination",
-      "accounts": [{ "id": 1, "type": "STORAGE", "balance": "100.00" }],
-      "transactions": [{ "uuid": "t1", "type": "TRANSFER", "origin": 1, "amount": "10.00" }],
-      "error": { "code": "VALIDATION_ERROR", "transactionUuid": "t1", "field": "destinationAccountId", "fieldCode": "DESTINATION_REQUIRED" }
+      "accounts": [
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "100.00"
+        }
+      ],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "TRANSFER",
+          "origin": 1,
+          "amount": "10.00"
+        }
+      ],
+      "error": {
+        "code": "VALIDATION_ERROR",
+        "transactionUuid": "t1",
+        "field": "destinationAccountId",
+        "fieldCode": "DESTINATION_REQUIRED"
+      }
     },
     {
       "name": "Origin and destination must be different",
-      "accounts": [{ "id": 1, "type": "STORAGE", "balance": "100.00" }],
-      "transactions": [{ "uuid": "t1", "type": "TRANSFER", "origin": 1, "destination": 1, "amount": "10.00" }],
-      "error": { "code": "VALIDATION_ERROR", "transactionUuid": "t1", "field": "destinationAccountId", "fieldCode": "SAME_ACCOUNT" }
+      "accounts": [
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "100.00"
+        }
+      ],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "TRANSFER",
+          "origin": 1,
+          "destination": 1,
+          "amount": "10.00"
+        }
+      ],
+      "error": {
+        "code": "VALIDATION_ERROR",
+        "transactionUuid": "t1",
+        "field": "destinationAccountId",
+        "fieldCode": "SAME_ACCOUNT"
+      }
     },
     {
       "name": "INVEST from STORAGE to INVESTMENT",
       "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "1000.00" },
-        { "id": 6, "type": "INVESTMENT", "balance": "2000.00" }
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "1000.00"
+        },
+        {
+          "id": 6,
+          "type": "INVESTMENT",
+          "balance": "2000.00"
+        }
       ],
-      "transactions": [{ "uuid": "t1", "type": "INVEST", "origin": 1, "destination": 6, "amount": "1000.00" }],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "INVEST",
+          "origin": 1,
+          "destination": 6,
+          "amount": "1000.00"
+        }
+      ],
       "expected": {
         "accounts": [
-          { "id": 1, "balance": "0.00", "status": "ACTIVE" },
-          { "id": 6, "balance": "3000.00", "status": "ACTIVE" }
+          {
+            "id": 1,
+            "balance": "0.00",
+            "status": "ACTIVE"
+          },
+          {
+            "id": 6,
+            "balance": "3000.00",
+            "status": "ACTIVE"
+          }
         ],
         "transactions": [
           {
             "uuid": "t1",
             "operationType": "NEUTER",
-            "reportedAmount": "0.00",
             "originBalanceBefore": "1000.00",
             "originBalanceAfter": "0.00",
             "destinationBalanceBefore": "2000.00",
@@ -343,20 +760,43 @@
     {
       "name": "INVEST from INVESTMENT to BUSINESS",
       "accounts": [
-        { "id": 6, "type": "INVESTMENT", "balance": "2000.00" },
-        { "id": 7, "type": "BUSINESS", "balance": "1000.00" }
+        {
+          "id": 6,
+          "type": "INVESTMENT",
+          "balance": "2000.00"
+        },
+        {
+          "id": 7,
+          "type": "BUSINESS",
+          "balance": "1000.00"
+        }
       ],
-      "transactions": [{ "uuid": "t1", "type": "INVEST", "origin": 6, "destination": 7, "amount": "500.00" }],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "INVEST",
+          "origin": 6,
+          "destination": 7,
+          "amount": "500.00"
+        }
+      ],
       "expected": {
         "accounts": [
-          { "id": 6, "balance": "1500.00", "status": "ACTIVE" },
-          { "id": 7, "balance": "1500.00", "status": "ACTIVE" }
+          {
+            "id": 6,
+            "balance": "1500.00",
+            "status": "ACTIVE"
+          },
+          {
+            "id": 7,
+            "balance": "1500.00",
+            "status": "ACTIVE"
+          }
         ],
         "transactions": [
           {
             "uuid": "t1",
             "operationType": "NEUTER",
-            "reportedAmount": "0.00",
             "originBalanceBefore": "2000.00",
             "originBalanceAfter": "1500.00",
             "destinationBalanceBefore": "1000.00",
@@ -368,58 +808,129 @@
     {
       "name": "INVEST fee must be lower than the amount",
       "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "1000.00" },
-        { "id": 6, "type": "INVESTMENT", "balance": "0.00" }
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "1000.00"
+        },
+        {
+          "id": 6,
+          "type": "INVESTMENT",
+          "balance": "0.00"
+        }
       ],
       "transactions": [
-        { "uuid": "t1", "type": "INVEST", "origin": 1, "destination": 6, "amount": "100.00", "fee": "100.00" }
+        {
+          "uuid": "t1",
+          "type": "INVEST",
+          "origin": 1,
+          "destination": 6,
+          "amount": "100.00",
+          "fee": "100.00"
+        }
       ],
-      "error": { "code": "VALIDATION_ERROR", "transactionUuid": "t1", "field": "fee", "fieldCode": "FEE_NOT_BELOW_AMOUNT" }
+      "error": {
+        "code": "VALIDATION_ERROR",
+        "transactionUuid": "t1",
+        "field": "fee",
+        "fieldCode": "FEE_NOT_BELOW_AMOUNT"
+      }
     },
     {
       "name": "PROFIT from BUSINESS to STORAGE with fee",
       "accounts": [
-        { "id": 7, "type": "BUSINESS", "balance": "1000.00" },
-        { "id": 1, "type": "STORAGE", "balance": "1000.00" }
+        {
+          "id": 7,
+          "type": "BUSINESS",
+          "balance": "1000.00"
+        },
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "1000.00"
+        }
       ],
       "transactions": [
-        { "uuid": "t1", "type": "PROFIT", "origin": 7, "destination": 1, "amount": "400.00", "fee": "40.00" }
+        {
+          "uuid": "t1",
+          "type": "PROFIT",
+          "origin": 7,
+          "destination": 1,
+          "amount": "400.00",
+          "fee": "40.00"
+        }
       ],
       "expected": {
         "accounts": [
-          { "id": 7, "balance": "600.00", "status": "ACTIVE" },
-          { "id": 1, "balance": "1360.00", "status": "ACTIVE" }
+          {
+            "id": 7,
+            "balance": "600.00",
+            "status": "ACTIVE"
+          },
+          {
+            "id": 1,
+            "balance": "1360.00",
+            "status": "ACTIVE"
+          }
         ],
         "transactions": [
           {
             "uuid": "t1",
             "operationType": "NEUTER",
-            "reportedAmount": "0.00",
             "originBalanceBefore": "1000.00",
             "originBalanceAfter": "600.00",
             "destinationBalanceBefore": "1000.00",
             "destinationBalanceAfter": "1360.00"
           }
-        ]
+        ],
+        "report": {
+          "income": "0.00",
+          "expense": "40.00",
+          "net": "-40.00"
+        }
       }
     },
     {
-      "name": "PROFIT from a temporary INVESTMENT that leaves balance keeps it ACTIVE",
+      "name": "Applied PROFIT from a temporary INVESTMENT disables it, even with remaining balance",
       "accounts": [
-        { "id": 10, "type": "INVESTMENT", "balance": "800.00", "temporary": true },
-        { "id": 1, "type": "STORAGE", "balance": "1000.00" }
+        {
+          "id": 10,
+          "type": "INVESTMENT",
+          "balance": "800.00",
+          "temporary": true
+        },
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "1000.00"
+        }
       ],
-      "transactions": [{ "uuid": "t1", "type": "PROFIT", "origin": 10, "destination": 1, "amount": "500.00" }],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "PROFIT",
+          "origin": 10,
+          "destination": 1,
+          "amount": "500.00"
+        }
+      ],
       "expected": {
         "accounts": [
-          { "id": 10, "balance": "300.00", "status": "ACTIVE" },
-          { "id": 1, "balance": "1500.00", "status": "ACTIVE" }
+          {
+            "id": 10,
+            "balance": "300.00",
+            "status": "DISABLED"
+          },
+          {
+            "id": 1,
+            "balance": "1500.00",
+            "status": "ACTIVE"
+          }
         ],
         "transactions": [
           {
             "uuid": "t1",
             "operationType": "NEUTER",
-            "reportedAmount": "0.00",
             "originBalanceBefore": "800.00",
             "originBalanceAfter": "300.00",
             "destinationBalanceBefore": "1000.00",
@@ -429,98 +940,87 @@
       }
     },
     {
-      "name": "PROFIT that leaves a temporary INVESTMENT at 0 disables it",
-      "accounts": [
-        { "id": 10, "type": "INVESTMENT", "balance": "800.00", "temporary": true },
-        { "id": 1, "type": "STORAGE", "balance": "1000.00" }
-      ],
-      "transactions": [{ "uuid": "t1", "type": "PROFIT", "origin": 10, "destination": 1, "amount": "800.00" }],
-      "expected": {
-        "accounts": [
-          { "id": 10, "balance": "0.00", "status": "DISABLED" },
-          { "id": 1, "balance": "1800.00", "status": "ACTIVE" }
-        ],
-        "transactions": [
-          {
-            "uuid": "t1",
-            "operationType": "NEUTER",
-            "reportedAmount": "0.00",
-            "originBalanceBefore": "800.00",
-            "originBalanceAfter": "0.00",
-            "destinationBalanceBefore": "1000.00",
-            "destinationBalanceAfter": "1800.00"
-          }
-        ]
-      }
-    },
-    {
       "name": "A temporary account disabled by its PROFIT cannot be used later in the same batch",
       "accounts": [
-        { "id": 10, "type": "INVESTMENT", "balance": "800.00", "temporary": true },
-        { "id": 1, "type": "STORAGE", "balance": "1000.00" }
-      ],
-      "transactions": [
-        { "uuid": "t1", "type": "PROFIT", "origin": 10, "destination": 1, "amount": "800.00", "operationDate": "2026-10-01T12:00:00" },
-        { "uuid": "t2", "type": "INVEST", "origin": 1, "destination": 10, "amount": "100.00", "operationDate": "2026-10-02T12:00:00" }
-      ],
-      "error": { "code": "ACCOUNT_DISABLED", "transactionUuid": "t2" }
-    },
-    {
-      "name": "PROFIT of a temporary account with the origin unapplied does not disable it yet",
-      "accounts": [
-        { "id": 10, "type": "INVESTMENT", "balance": "800.00", "temporary": true },
-        { "id": 1, "type": "STORAGE", "balance": "1000.00" }
-      ],
-      "transactions": [
-        { "uuid": "t1", "type": "PROFIT", "origin": 10, "destination": 1, "amount": "800.00", "originApplied": false }
-      ],
-      "expected": {
-        "accounts": [
-          { "id": 10, "balance": "800.00", "status": "ACTIVE" },
-          { "id": 1, "balance": "1800.00", "status": "ACTIVE" }
-        ],
-        "transactions": [
-          {
-            "uuid": "t1",
-            "operationType": "NEUTER",
-            "reportedAmount": "0.00",
-            "originBalanceBefore": "800.00",
-            "originBalanceAfter": "800.00",
-            "destinationBalanceBefore": "1000.00",
-            "destinationBalanceAfter": "1800.00"
-          }
-        ]
-      }
-    },
-    {
-      "name": "PROFIT requested but not reflected anywhere yet (withdrawal request): both sides unapplied",
-      "accounts": [
-        { "id": 6, "type": "INVESTMENT", "balance": "2000.00" },
-        { "id": 1, "type": "STORAGE", "balance": "1000.00" }
+        {
+          "id": 10,
+          "type": "INVESTMENT",
+          "balance": "800.00",
+          "temporary": true
+        },
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "1000.00"
+        }
       ],
       "transactions": [
         {
           "uuid": "t1",
           "type": "PROFIT",
-          "origin": 6,
+          "origin": 10,
           "destination": 1,
-          "amount": "500.00",
-          "originApplied": false,
-          "destinationApplied": false
+          "amount": "800.00",
+          "operationDate": "2026-10-01T09:00:00"
+        },
+        {
+          "uuid": "t2",
+          "type": "INVEST",
+          "origin": 1,
+          "destination": 10,
+          "amount": "100.00",
+          "operationDate": "2026-10-02T09:00:00"
+        }
+      ],
+      "error": {
+        "code": "ACCOUNT_DISABLED",
+        "transactionUuid": "t2"
+      }
+    },
+    {
+      "name": "Pending PROFIT of a temporary account: the origin is debited but the account is disabled only when applied",
+      "accounts": [
+        {
+          "id": 10,
+          "type": "INVESTMENT",
+          "balance": "800.00",
+          "temporary": true
+        },
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "1000.00"
+        }
+      ],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "PROFIT",
+          "origin": 10,
+          "destination": 1,
+          "amount": "800.00",
+          "applied": false
         }
       ],
       "expected": {
         "accounts": [
-          { "id": 6, "balance": "2000.00", "status": "ACTIVE" },
-          { "id": 1, "balance": "1000.00", "status": "ACTIVE" }
+          {
+            "id": 10,
+            "balance": "0.00",
+            "status": "ACTIVE"
+          },
+          {
+            "id": 1,
+            "balance": "1000.00",
+            "status": "ACTIVE"
+          }
         ],
         "transactions": [
           {
             "uuid": "t1",
             "operationType": "NEUTER",
-            "reportedAmount": "0.00",
-            "originBalanceBefore": "2000.00",
-            "originBalanceAfter": "2000.00",
+            "originBalanceBefore": "800.00",
+            "originBalanceAfter": "0.00",
             "destinationBalanceBefore": "1000.00",
             "destinationBalanceAfter": "1000.00"
           }
@@ -528,198 +1028,440 @@
       }
     },
     {
-      "name": "DIVIDEND without destination credits the origin",
-      "accounts": [{ "id": 6, "type": "INVESTMENT", "balance": "2000.00" }],
-      "transactions": [{ "uuid": "t1", "type": "DIVIDEND", "origin": 6, "amount": "100.00", "fee": "10.00" }],
+      "name": "DIVIDEND without destination credits the origin; income = amount − fee",
+      "accounts": [
+        {
+          "id": 6,
+          "type": "INVESTMENT",
+          "balance": "2000.00"
+        }
+      ],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "DIVIDEND",
+          "origin": 6,
+          "amount": "100.00",
+          "fee": "10.00"
+        }
+      ],
       "expected": {
-        "accounts": [{ "id": 6, "balance": "2090.00", "status": "ACTIVE" }],
+        "accounts": [
+          {
+            "id": 6,
+            "balance": "2090.00",
+            "status": "ACTIVE"
+          }
+        ],
         "transactions": [
           {
             "uuid": "t1",
             "operationType": "ADDITION",
-            "reportedAmount": "100.00",
             "originBalanceBefore": "2000.00",
             "originBalanceAfter": "2090.00",
             "destinationBalanceBefore": null,
             "destinationBalanceAfter": null
           }
-        ]
+        ],
+        "report": {
+          "income": "90.00",
+          "expense": "0.00",
+          "net": "90.00"
+        }
       }
     },
     {
       "name": "DIVIDEND with destination credits the destination only",
       "accounts": [
-        { "id": 8, "type": "CREDITOR", "balance": "300.00" },
-        { "id": 1, "type": "STORAGE", "balance": "1000.00" }
+        {
+          "id": 8,
+          "type": "CREDITOR",
+          "balance": "300.00"
+        },
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "1000.00"
+        }
       ],
-      "transactions": [{ "uuid": "t1", "type": "DIVIDEND", "origin": 8, "destination": 1, "amount": "50.00" }],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "DIVIDEND",
+          "origin": 8,
+          "destination": 1,
+          "amount": "50.00"
+        }
+      ],
       "expected": {
         "accounts": [
-          { "id": 8, "balance": "300.00", "status": "ACTIVE" },
-          { "id": 1, "balance": "1050.00", "status": "ACTIVE" }
+          {
+            "id": 8,
+            "balance": "300.00",
+            "status": "ACTIVE"
+          },
+          {
+            "id": 1,
+            "balance": "1050.00",
+            "status": "ACTIVE"
+          }
         ],
         "transactions": [
           {
             "uuid": "t1",
             "operationType": "ADDITION",
-            "reportedAmount": "50.00",
             "originBalanceBefore": "300.00",
             "originBalanceAfter": "300.00",
             "destinationBalanceBefore": "1000.00",
             "destinationBalanceAfter": "1050.00"
           }
-        ]
+        ],
+        "report": {
+          "income": "50.00",
+          "expense": "0.00",
+          "net": "50.00"
+        }
       }
     },
     {
-      "name": "DIVIDEND with the destination unapplied",
+      "name": "DIVIDEND cannot be pending",
       "accounts": [
-        { "id": 6, "type": "INVESTMENT", "balance": "2000.00" },
-        { "id": 1, "type": "STORAGE", "balance": "1000.00" }
+        {
+          "id": 6,
+          "type": "INVESTMENT",
+          "balance": "0.00"
+        },
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "0.00"
+        }
       ],
       "transactions": [
-        { "uuid": "t1", "type": "DIVIDEND", "origin": 6, "destination": 1, "amount": "100.00", "destinationApplied": false }
+        {
+          "uuid": "t1",
+          "type": "DIVIDEND",
+          "origin": 6,
+          "destination": 1,
+          "amount": "10.00",
+          "applied": false
+        }
+      ],
+      "error": {
+        "code": "VALIDATION_ERROR",
+        "transactionUuid": "t1",
+        "field": "applied",
+        "fieldCode": "PENDING_NOT_ALLOWED"
+      }
+    },
+    {
+      "name": "DIVIDEND fee must be lower than the amount",
+      "accounts": [
+        {
+          "id": 6,
+          "type": "INVESTMENT",
+          "balance": "0.00"
+        }
+      ],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "DIVIDEND",
+          "origin": 6,
+          "amount": "10.00",
+          "fee": "12.00"
+        }
+      ],
+      "error": {
+        "code": "VALIDATION_ERROR",
+        "transactionUuid": "t1",
+        "field": "fee",
+        "fieldCode": "FEE_NOT_BELOW_AMOUNT"
+      }
+    },
+    {
+      "name": "INTEREST on STORAGE is an expense",
+      "accounts": [
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "1000.00"
+        }
+      ],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "INTEREST",
+          "origin": 1,
+          "amount": "15.00"
+        }
       ],
       "expected": {
         "accounts": [
-          { "id": 6, "balance": "2000.00", "status": "ACTIVE" },
-          { "id": 1, "balance": "1000.00", "status": "ACTIVE" }
+          {
+            "id": 1,
+            "balance": "985.00",
+            "status": "ACTIVE"
+          }
         ],
         "transactions": [
           {
             "uuid": "t1",
-            "operationType": "ADDITION",
-            "reportedAmount": "100.00",
-            "originBalanceBefore": "2000.00",
-            "originBalanceAfter": "2000.00",
-            "destinationBalanceBefore": "1000.00",
-            "destinationBalanceAfter": "1000.00"
-          }
-        ]
-      }
-    },
-    {
-      "name": "DIVIDEND origin cannot stay unapplied",
-      "accounts": [{ "id": 6, "type": "INVESTMENT", "balance": "0.00" }],
-      "transactions": [{ "uuid": "t1", "type": "DIVIDEND", "origin": 6, "amount": "10.00", "originApplied": false }],
-      "error": { "code": "VALIDATION_ERROR", "transactionUuid": "t1", "field": "originApplied", "fieldCode": "PENDING_NOT_ALLOWED" }
-    },
-    {
-      "name": "DIVIDEND fee must be lower than the amount",
-      "accounts": [{ "id": 6, "type": "INVESTMENT", "balance": "0.00" }],
-      "transactions": [{ "uuid": "t1", "type": "DIVIDEND", "origin": 6, "amount": "10.00", "fee": "12.00" }],
-      "error": { "code": "VALIDATION_ERROR", "transactionUuid": "t1", "field": "fee", "fieldCode": "FEE_NOT_BELOW_AMOUNT" }
-    },
-    {
-      "name": "INTEREST on STORAGE is an expense",
-      "accounts": [{ "id": 1, "type": "STORAGE", "balance": "1000.00" }],
-      "transactions": [{ "uuid": "t1", "type": "INTEREST", "origin": 1, "amount": "15.00" }],
-      "expected": {
-        "accounts": [{ "id": 1, "balance": "985.00", "status": "ACTIVE" }],
-        "transactions": [
-          {
-            "uuid": "t1",
             "operationType": "SUBTRACTION",
-            "reportedAmount": "15.00",
             "originBalanceBefore": "1000.00",
             "originBalanceAfter": "985.00",
             "destinationBalanceBefore": null,
             "destinationBalanceAfter": null
           }
-        ]
+        ],
+        "report": {
+          "income": "0.00",
+          "expense": "15.00",
+          "net": "-15.00"
+        }
       }
     },
     {
-      "name": "INTEREST on DEBTOR grows the debt and is not an expense yet (paid later)",
-      "accounts": [{ "id": 5, "type": "DEBTOR", "balance": "1000.00", "creditLimit": "5000.00" }],
-      "transactions": [{ "uuid": "t1", "type": "INTEREST", "origin": 5, "amount": "30.00" }],
+      "name": "INTEREST on DEBTOR grows the debt and is an expense when it is charged",
+      "accounts": [
+        {
+          "id": 5,
+          "type": "DEBTOR",
+          "balance": "1000.00",
+          "creditLimit": "5000.00"
+        }
+      ],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "INTEREST",
+          "origin": 5,
+          "amount": "30.00"
+        }
+      ],
       "expected": {
-        "accounts": [{ "id": 5, "balance": "1030.00", "status": "ACTIVE" }],
+        "accounts": [
+          {
+            "id": 5,
+            "balance": "1030.00",
+            "status": "ACTIVE"
+          }
+        ],
         "transactions": [
           {
             "uuid": "t1",
-            "operationType": "NEUTER",
-            "reportedAmount": "0.00",
+            "operationType": "SUBTRACTION",
             "originBalanceBefore": "1000.00",
             "originBalanceAfter": "1030.00",
             "destinationBalanceBefore": null,
             "destinationBalanceAfter": null
           }
-        ]
+        ],
+        "report": {
+          "income": "0.00",
+          "expense": "30.00",
+          "net": "-30.00"
+        }
       }
     },
     {
       "name": "INTEREST on STORAGE without enough funds",
-      "accounts": [{ "id": 1, "type": "STORAGE", "balance": "10.00" }],
-      "transactions": [{ "uuid": "t1", "type": "INTEREST", "origin": 1, "amount": "10.01" }],
-      "error": { "code": "INSUFFICIENT_FUNDS", "transactionUuid": "t1" }
+      "accounts": [
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "10.00"
+        }
+      ],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "INTEREST",
+          "origin": 1,
+          "amount": "10.01"
+        }
+      ],
+      "error": {
+        "code": "INSUFFICIENT_FUNDS",
+        "transactionUuid": "t1"
+      }
     },
     {
       "name": "INTEREST does not accept a fee",
-      "accounts": [{ "id": 1, "type": "STORAGE", "balance": "100.00" }],
-      "transactions": [{ "uuid": "t1", "type": "INTEREST", "origin": 1, "amount": "10.00", "fee": "1.00" }],
-      "error": { "code": "VALIDATION_ERROR", "transactionUuid": "t1", "field": "fee", "fieldCode": "FEE_NOT_ALLOWED" }
+      "accounts": [
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "100.00"
+        }
+      ],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "INTEREST",
+          "origin": 1,
+          "amount": "10.00",
+          "fee": "1.00"
+        }
+      ],
+      "error": {
+        "code": "VALIDATION_ERROR",
+        "transactionUuid": "t1",
+        "field": "fee",
+        "fieldCode": "FEE_NOT_ALLOWED"
+      }
     },
     {
       "name": "INTEREST does not accept a destination",
       "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "100.00" },
-        { "id": 2, "type": "STORAGE", "balance": "100.00" }
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "100.00"
+        },
+        {
+          "id": 2,
+          "type": "STORAGE",
+          "balance": "100.00"
+        }
       ],
-      "transactions": [{ "uuid": "t1", "type": "INTEREST", "origin": 1, "destination": 2, "amount": "10.00" }],
-      "error": { "code": "VALIDATION_ERROR", "transactionUuid": "t1", "field": "destinationAccountId", "fieldCode": "DESTINATION_NOT_ALLOWED" }
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "INTEREST",
+          "origin": 1,
+          "destination": 2,
+          "amount": "10.00"
+        }
+      ],
+      "error": {
+        "code": "VALIDATION_ERROR",
+        "transactionUuid": "t1",
+        "field": "destinationAccountId",
+        "fieldCode": "DESTINATION_NOT_ALLOWED"
+      }
     },
     {
       "name": "BORROW lends money to a CREDITOR",
       "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "1000.00" },
-        { "id": 8, "type": "CREDITOR", "balance": "300.00" }
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "1000.00"
+        },
+        {
+          "id": 8,
+          "type": "CREDITOR",
+          "balance": "300.00"
+        }
       ],
-      "transactions": [{ "uuid": "t1", "type": "BORROW", "origin": 1, "destination": 8, "amount": "200.00" }],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "BORROW",
+          "origin": 1,
+          "destination": 8,
+          "amount": "200.00"
+        }
+      ],
       "expected": {
         "accounts": [
-          { "id": 1, "balance": "800.00", "status": "ACTIVE" },
-          { "id": 8, "balance": "500.00", "status": "ACTIVE" }
+          {
+            "id": 1,
+            "balance": "800.00",
+            "status": "ACTIVE"
+          },
+          {
+            "id": 8,
+            "balance": "500.00",
+            "status": "ACTIVE"
+          }
         ],
         "transactions": [
           {
             "uuid": "t1",
             "operationType": "NEUTER",
-            "reportedAmount": "0.00",
             "originBalanceBefore": "1000.00",
             "originBalanceAfter": "800.00",
             "destinationBalanceBefore": "300.00",
             "destinationBalanceAfter": "500.00"
           }
-        ]
+        ],
+        "report": {
+          "income": "0.00",
+          "expense": "0.00",
+          "net": "0.00"
+        }
       }
     },
     {
       "name": "BORROW without enough funds (no balance can become negative)",
       "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "50.00" },
-        { "id": 8, "type": "CREDITOR", "balance": "0.00" }
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "50.00"
+        },
+        {
+          "id": 8,
+          "type": "CREDITOR",
+          "balance": "0.00"
+        }
       ],
-      "transactions": [{ "uuid": "t1", "type": "BORROW", "origin": 1, "destination": 8, "amount": "60.00" }],
-      "error": { "code": "INSUFFICIENT_FUNDS", "transactionUuid": "t1" }
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "BORROW",
+          "origin": 1,
+          "destination": 8,
+          "amount": "60.00"
+        }
+      ],
+      "error": {
+        "code": "INSUFFICIENT_FUNDS",
+        "transactionUuid": "t1"
+      }
     },
     {
       "name": "COLLECTION collects a loan",
       "accounts": [
-        { "id": 8, "type": "CREDITOR", "balance": "300.00" },
-        { "id": 1, "type": "STORAGE", "balance": "1000.00" }
+        {
+          "id": 8,
+          "type": "CREDITOR",
+          "balance": "300.00"
+        },
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "1000.00"
+        }
       ],
-      "transactions": [{ "uuid": "t1", "type": "COLLECTION", "origin": 8, "destination": 1, "amount": "300.00" }],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "COLLECTION",
+          "origin": 8,
+          "destination": 1,
+          "amount": "300.00"
+        }
+      ],
       "expected": {
         "accounts": [
-          { "id": 8, "balance": "0.00", "status": "ACTIVE" },
-          { "id": 1, "balance": "1300.00", "status": "ACTIVE" }
+          {
+            "id": 8,
+            "balance": "0.00",
+            "status": "ACTIVE"
+          },
+          {
+            "id": 1,
+            "balance": "1300.00",
+            "status": "ACTIVE"
+          }
         ],
         "transactions": [
           {
             "uuid": "t1",
             "operationType": "NEUTER",
-            "reportedAmount": "0.00",
             "originBalanceBefore": "300.00",
             "originBalanceAfter": "0.00",
             "destinationBalanceBefore": "1000.00",
@@ -731,224 +1473,495 @@
     {
       "name": "COLLECTION of more than what is owed is senseless",
       "accounts": [
-        { "id": 8, "type": "CREDITOR", "balance": "300.00" },
-        { "id": 1, "type": "STORAGE", "balance": "0.00" }
-      ],
-      "transactions": [{ "uuid": "t1", "type": "COLLECTION", "origin": 8, "destination": 1, "amount": "301.00" }],
-      "error": { "code": "SENSELESS_TRANSACTION", "transactionUuid": "t1" }
-    },
-    {
-      "name": "DEBT to STORAGE (cash loan): money enters my accounts, reported as income",
-      "accounts": [
-        { "id": 5, "type": "DEBTOR", "balance": "0.00", "creditLimit": "5000.00" },
-        { "id": 1, "type": "STORAGE", "balance": "1000.00" }
+        {
+          "id": 8,
+          "type": "CREDITOR",
+          "balance": "300.00"
+        },
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "0.00"
+        }
       ],
       "transactions": [
-        { "uuid": "t1", "type": "DEBT", "origin": 5, "destination": 1, "amount": "2000.00", "fee": "100.00" }
+        {
+          "uuid": "t1",
+          "type": "COLLECTION",
+          "origin": 8,
+          "destination": 1,
+          "amount": "301.00"
+        }
+      ],
+      "error": {
+        "code": "SENSELESS_TRANSACTION",
+        "transactionUuid": "t1"
+      }
+    },
+    {
+      "name": "DEBT to STORAGE (cash loan) is not an expense; only its fee is",
+      "accounts": [
+        {
+          "id": 5,
+          "type": "DEBTOR",
+          "balance": "0.00",
+          "creditLimit": "5000.00"
+        },
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "1000.00"
+        }
+      ],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "DEBT",
+          "origin": 5,
+          "destination": 1,
+          "amount": "2000.00",
+          "fee": "100.00"
+        }
       ],
       "expected": {
         "accounts": [
-          { "id": 5, "balance": "2000.00", "status": "ACTIVE" },
-          { "id": 1, "balance": "2900.00", "status": "ACTIVE" }
+          {
+            "id": 5,
+            "balance": "2000.00",
+            "status": "ACTIVE"
+          },
+          {
+            "id": 1,
+            "balance": "2900.00",
+            "status": "ACTIVE"
+          }
         ],
         "transactions": [
           {
             "uuid": "t1",
-            "operationType": "ADDITION",
-            "reportedAmount": "2000.00",
+            "operationType": "NEUTER",
             "originBalanceBefore": "0.00",
             "originBalanceAfter": "2000.00",
             "destinationBalanceBefore": "1000.00",
             "destinationBalanceAfter": "2900.00"
           }
-        ]
+        ],
+        "report": {
+          "income": "0.00",
+          "expense": "100.00",
+          "net": "-100.00"
+        }
       }
     },
     {
       "name": "DEBT to STORAGE fee must be lower than the amount",
       "accounts": [
-        { "id": 5, "type": "DEBTOR", "balance": "0.00" },
-        { "id": 1, "type": "STORAGE", "balance": "0.00" }
+        {
+          "id": 5,
+          "type": "DEBTOR",
+          "balance": "0.00"
+        },
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "0.00"
+        }
       ],
       "transactions": [
-        { "uuid": "t1", "type": "DEBT", "origin": 5, "destination": 1, "amount": "100.00", "fee": "150.00" }
+        {
+          "uuid": "t1",
+          "type": "DEBT",
+          "origin": 5,
+          "destination": 1,
+          "amount": "100.00",
+          "fee": "150.00"
+        }
       ],
-      "error": { "code": "VALIDATION_ERROR", "transactionUuid": "t1", "field": "fee", "fieldCode": "FEE_NOT_BELOW_AMOUNT" }
+      "error": {
+        "code": "VALIDATION_ERROR",
+        "transactionUuid": "t1",
+        "field": "fee",
+        "fieldCode": "FEE_NOT_BELOW_AMOUNT"
+      }
     },
     {
-      "name": "DEBT to CONSUMER (purchase on credit) grows the debt; not an expense until it is paid",
+      "name": "DEBT to CONSUMER (purchase on credit) is an expense the day of the purchase",
       "accounts": [
-        { "id": 5, "type": "DEBTOR", "balance": "0.00", "creditLimit": "5000.00" },
-        { "id": 4, "type": "CONSUMER" }
+        {
+          "id": 5,
+          "type": "DEBTOR",
+          "balance": "0.00",
+          "creditLimit": "5000.00"
+        },
+        {
+          "id": 4,
+          "type": "CONSUMER"
+        }
       ],
-      "transactions": [{ "uuid": "t1", "type": "DEBT", "origin": 5, "destination": 4, "amount": "700.00" }],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "DEBT",
+          "origin": 5,
+          "destination": 4,
+          "amount": "700.00"
+        }
+      ],
       "expected": {
-        "accounts": [{ "id": 5, "balance": "700.00", "status": "ACTIVE" }],
+        "accounts": [
+          {
+            "id": 5,
+            "balance": "700.00",
+            "status": "ACTIVE"
+          }
+        ],
         "transactions": [
           {
             "uuid": "t1",
-            "operationType": "NEUTER",
-            "reportedAmount": "0.00",
+            "operationType": "SUBTRACTION",
             "originBalanceBefore": "0.00",
             "originBalanceAfter": "700.00",
             "destinationBalanceBefore": null,
             "destinationBalanceAfter": null
           }
-        ]
+        ],
+        "report": {
+          "income": "0.00",
+          "expense": "700.00",
+          "net": "-700.00"
+        }
       }
     },
     {
       "name": "DEBT to CONSUMER does not accept a fee",
       "accounts": [
-        { "id": 5, "type": "DEBTOR", "balance": "0.00" },
-        { "id": 4, "type": "CONSUMER" }
+        {
+          "id": 5,
+          "type": "DEBTOR",
+          "balance": "0.00"
+        },
+        {
+          "id": 4,
+          "type": "CONSUMER"
+        }
       ],
       "transactions": [
-        { "uuid": "t1", "type": "DEBT", "origin": 5, "destination": 4, "amount": "100.00", "fee": "1.00" }
+        {
+          "uuid": "t1",
+          "type": "DEBT",
+          "origin": 5,
+          "destination": 4,
+          "amount": "100.00",
+          "fee": "1.00"
+        }
       ],
-      "error": { "code": "VALIDATION_ERROR", "transactionUuid": "t1", "field": "fee", "fieldCode": "FEE_NOT_ALLOWED" }
+      "error": {
+        "code": "VALIDATION_ERROR",
+        "transactionUuid": "t1",
+        "field": "fee",
+        "fieldCode": "FEE_NOT_ALLOWED"
+      }
     },
     {
       "name": "DEBT cannot exceed the credit limit",
       "accounts": [
-        { "id": 5, "type": "DEBTOR", "balance": "4800.00", "creditLimit": "5000.00" },
-        { "id": 1, "type": "STORAGE", "balance": "0.00" }
+        {
+          "id": 5,
+          "type": "DEBTOR",
+          "balance": "4800.00",
+          "creditLimit": "5000.00"
+        },
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "0.00"
+        }
       ],
-      "transactions": [{ "uuid": "t1", "type": "DEBT", "origin": 5, "destination": 1, "amount": "300.00" }],
-      "error": { "code": "CREDIT_LIMIT_EXCEEDED", "transactionUuid": "t1" }
-    },
-    {
-      "name": "DEBT from a DEBTOR without credit line has no limit",
-      "accounts": [
-        { "id": 9, "type": "DEBTOR", "balance": "1000.00" },
-        { "id": 4, "type": "CONSUMER" }
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "DEBT",
+          "origin": 5,
+          "destination": 1,
+          "amount": "300.00"
+        }
       ],
-      "transactions": [{ "uuid": "t1", "type": "DEBT", "origin": 9, "destination": 4, "amount": "1000000.00" }],
-      "expected": {
-        "accounts": [{ "id": 9, "balance": "1001000.00", "status": "ACTIVE" }],
-        "transactions": [
-          {
-            "uuid": "t1",
-            "operationType": "NEUTER",
-            "reportedAmount": "0.00",
-            "originBalanceBefore": "1000.00",
-            "originBalanceAfter": "1001000.00",
-            "destinationBalanceBefore": null,
-            "destinationBalanceAfter": null
-          }
-        ]
+      "error": {
+        "code": "CREDIT_LIMIT_EXCEEDED",
+        "transactionUuid": "t1"
       }
     },
     {
-      "name": "PAYMENT reduces both balances; it is the moment the money leaves (expense)",
+      "name": "PAYMENT reduces both balances and is not an expense (it settles a debt already recognized)",
       "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "1000.00" },
-        { "id": 5, "type": "DEBTOR", "balance": "1200.00", "creditLimit": "5000.00" }
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "1000.00"
+        },
+        {
+          "id": 5,
+          "type": "DEBTOR",
+          "balance": "1200.00",
+          "creditLimit": "5000.00"
+        }
       ],
-      "transactions": [{ "uuid": "t1", "type": "PAYMENT", "origin": 1, "destination": 5, "amount": "1000.00" }],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "PAYMENT",
+          "origin": 1,
+          "destination": 5,
+          "amount": "1000.00"
+        }
+      ],
       "expected": {
         "accounts": [
-          { "id": 1, "balance": "0.00", "status": "ACTIVE" },
-          { "id": 5, "balance": "200.00", "status": "ACTIVE" }
+          {
+            "id": 1,
+            "balance": "0.00",
+            "status": "ACTIVE"
+          },
+          {
+            "id": 5,
+            "balance": "200.00",
+            "status": "ACTIVE"
+          }
         ],
         "transactions": [
           {
             "uuid": "t1",
-            "operationType": "SUBTRACTION",
-            "reportedAmount": "1000.00",
+            "operationType": "NEUTER",
             "originBalanceBefore": "1000.00",
             "originBalanceAfter": "0.00",
             "destinationBalanceBefore": "1200.00",
             "destinationBalanceAfter": "200.00"
           }
-        ]
+        ],
+        "report": {
+          "income": "0.00",
+          "expense": "0.00",
+          "net": "0.00"
+        }
       }
     },
     {
-      "name": "PAYMENT fee is paid only by the STORAGE; the debt goes down by the amount",
+      "name": "PAYMENT fee is paid by the STORAGE and is an expense; the debt goes down by the amount",
       "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "5000.00" },
-        { "id": 5, "type": "DEBTOR", "balance": "3000.00" }
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "5000.00"
+        },
+        {
+          "id": 5,
+          "type": "DEBTOR",
+          "balance": "3000.00"
+        }
       ],
       "transactions": [
-        { "uuid": "t1", "type": "PAYMENT", "origin": 1, "destination": 5, "amount": "1500.00", "fee": "20.00" }
+        {
+          "uuid": "t1",
+          "type": "PAYMENT",
+          "origin": 1,
+          "destination": 5,
+          "amount": "1500.00",
+          "fee": "20.00"
+        }
       ],
       "expected": {
         "accounts": [
-          { "id": 1, "balance": "3480.00", "status": "ACTIVE" },
-          { "id": 5, "balance": "1500.00", "status": "ACTIVE" }
+          {
+            "id": 1,
+            "balance": "3480.00",
+            "status": "ACTIVE"
+          },
+          {
+            "id": 5,
+            "balance": "1500.00",
+            "status": "ACTIVE"
+          }
         ],
         "transactions": [
           {
             "uuid": "t1",
-            "operationType": "SUBTRACTION",
-            "reportedAmount": "1500.00",
+            "operationType": "NEUTER",
             "originBalanceBefore": "5000.00",
             "originBalanceAfter": "3480.00",
             "destinationBalanceBefore": "3000.00",
             "destinationBalanceAfter": "1500.00"
           }
-        ]
+        ],
+        "report": {
+          "income": "0.00",
+          "expense": "20.00",
+          "net": "-20.00"
+        }
       }
     },
     {
       "name": "PAYMENT of more than what is owed is senseless",
       "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "1000.00" },
-        { "id": 5, "type": "DEBTOR", "balance": "100.00" }
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "1000.00"
+        },
+        {
+          "id": 5,
+          "type": "DEBTOR",
+          "balance": "100.00"
+        }
       ],
-      "transactions": [{ "uuid": "t1", "type": "PAYMENT", "origin": 1, "destination": 5, "amount": "150.00" }],
-      "error": { "code": "SENSELESS_TRANSACTION", "transactionUuid": "t1" }
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "PAYMENT",
+          "origin": 1,
+          "destination": 5,
+          "amount": "150.00"
+        }
+      ],
+      "error": {
+        "code": "SENSELESS_TRANSACTION",
+        "transactionUuid": "t1"
+      }
     },
     {
       "name": "PAYMENT needs funds for amount plus fee",
       "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "100.00" },
-        { "id": 5, "type": "DEBTOR", "balance": "1000.00" }
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "100.00"
+        },
+        {
+          "id": 5,
+          "type": "DEBTOR",
+          "balance": "1000.00"
+        }
       ],
       "transactions": [
-        { "uuid": "t1", "type": "PAYMENT", "origin": 1, "destination": 5, "amount": "100.00", "fee": "1.00" }
+        {
+          "uuid": "t1",
+          "type": "PAYMENT",
+          "origin": 1,
+          "destination": 5,
+          "amount": "100.00",
+          "fee": "1.00"
+        }
       ],
-      "error": { "code": "INSUFFICIENT_FUNDS", "transactionUuid": "t1" }
+      "error": {
+        "code": "INSUFFICIENT_FUNDS",
+        "transactionUuid": "t1"
+      }
     },
     {
-      "name": "PAYMENT cannot stay unapplied",
+      "name": "PAYMENT cannot be pending",
       "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "1000.00" },
-        { "id": 5, "type": "DEBTOR", "balance": "1000.00" }
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "1000.00"
+        },
+        {
+          "id": 5,
+          "type": "DEBTOR",
+          "balance": "1000.00"
+        }
       ],
       "transactions": [
-        { "uuid": "t1", "type": "PAYMENT", "origin": 1, "destination": 5, "amount": "100.00", "destinationApplied": false }
+        {
+          "uuid": "t1",
+          "type": "PAYMENT",
+          "origin": 1,
+          "destination": 5,
+          "amount": "100.00",
+          "applied": false
+        }
       ],
-      "error": { "code": "VALIDATION_ERROR", "transactionUuid": "t1", "field": "destinationApplied", "fieldCode": "PENDING_NOT_ALLOWED" }
+      "error": {
+        "code": "VALIDATION_ERROR",
+        "transactionUuid": "t1",
+        "field": "applied",
+        "fieldCode": "PENDING_NOT_ALLOWED"
+      }
     },
     {
       "name": "Disabled accounts cannot be used",
       "accounts": [
-        { "id": 12, "type": "STORAGE", "balance": "100.00", "status": "DISABLED" },
-        { "id": 4, "type": "CONSUMER" }
+        {
+          "id": 12,
+          "type": "STORAGE",
+          "balance": "100.00",
+          "status": "DISABLED"
+        },
+        {
+          "id": 4,
+          "type": "CONSUMER"
+        }
       ],
-      "transactions": [{ "uuid": "t1", "type": "EXPENSE", "origin": 12, "destination": 4, "amount": "10.00" }],
-      "error": { "code": "ACCOUNT_DISABLED", "transactionUuid": "t1" }
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "EXPENSE",
+          "origin": 12,
+          "destination": 4,
+          "amount": "10.00"
+        }
+      ],
+      "error": {
+        "code": "ACCOUNT_DISABLED",
+        "transactionUuid": "t1"
+      }
     },
     {
       "name": "Transactions are applied by operation date, not capture order",
       "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "100.00" },
-        { "id": 3, "type": "SUPPLIER" },
-        { "id": 4, "type": "CONSUMER" }
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "100.00"
+        },
+        {
+          "id": 3,
+          "type": "SUPPLIER"
+        },
+        {
+          "id": 4,
+          "type": "CONSUMER"
+        }
       ],
       "transactions": [
-        { "uuid": "t1", "type": "EXPENSE", "origin": 1, "destination": 4, "amount": "150.00", "operationDate": "2026-10-05T09:00:00" },
-        { "uuid": "t2", "type": "INCOME", "origin": 3, "destination": 1, "amount": "100.00", "operationDate": "2026-10-01T09:00:00" }
+        {
+          "uuid": "t1",
+          "type": "EXPENSE",
+          "origin": 1,
+          "destination": 4,
+          "amount": "150.00",
+          "operationDate": "2026-10-05T09:00:00"
+        },
+        {
+          "uuid": "t2",
+          "type": "INCOME",
+          "origin": 3,
+          "destination": 1,
+          "amount": "100.00",
+          "operationDate": "2026-10-01T09:00:00"
+        }
       ],
       "expected": {
-        "accounts": [{ "id": 1, "balance": "50.00", "status": "ACTIVE" }],
+        "accounts": [
+          {
+            "id": 1,
+            "balance": "50.00",
+            "status": "ACTIVE"
+          }
+        ],
         "transactions": [
           {
             "uuid": "t2",
             "operationType": "ADDITION",
-            "reportedAmount": "100.00",
             "originBalanceBefore": null,
             "originBalanceAfter": null,
             "destinationBalanceBefore": "100.00",
@@ -957,48 +1970,106 @@
           {
             "uuid": "t1",
             "operationType": "SUBTRACTION",
-            "reportedAmount": "150.00",
             "originBalanceBefore": "200.00",
             "originBalanceAfter": "50.00",
             "destinationBalanceBefore": null,
             "destinationBalanceAfter": null
           }
-        ]
+        ],
+        "report": {
+          "income": "100.00",
+          "expense": "150.00",
+          "net": "-50.00"
+        }
       }
     },
     {
       "name": "An expense dated before the income that funds it fails",
       "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "100.00" },
-        { "id": 3, "type": "SUPPLIER" },
-        { "id": 4, "type": "CONSUMER" }
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "100.00"
+        },
+        {
+          "id": 3,
+          "type": "SUPPLIER"
+        },
+        {
+          "id": 4,
+          "type": "CONSUMER"
+        }
       ],
       "transactions": [
-        { "uuid": "t1", "type": "EXPENSE", "origin": 1, "destination": 4, "amount": "150.00", "operationDate": "2026-10-01T09:00:00" },
-        { "uuid": "t2", "type": "INCOME", "origin": 3, "destination": 1, "amount": "100.00", "operationDate": "2026-10-05T09:00:00" }
+        {
+          "uuid": "t1",
+          "type": "EXPENSE",
+          "origin": 1,
+          "destination": 4,
+          "amount": "150.00",
+          "operationDate": "2026-10-01T09:00:00"
+        },
+        {
+          "uuid": "t2",
+          "type": "INCOME",
+          "origin": 3,
+          "destination": 1,
+          "amount": "100.00",
+          "operationDate": "2026-10-05T09:00:00"
+        }
       ],
-      "error": { "code": "INSUFFICIENT_FUNDS", "transactionUuid": "t1" }
+      "error": {
+        "code": "INSUFFICIENT_FUNDS",
+        "transactionUuid": "t1"
+      }
     },
     {
       "name": "Equal dates keep the capture order",
       "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "1000.00" },
-        { "id": 2, "type": "STORAGE", "balance": "500.00" }
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "1000.00"
+        },
+        {
+          "id": 2,
+          "type": "STORAGE",
+          "balance": "500.00"
+        }
       ],
       "transactions": [
-        { "uuid": "t1", "type": "TRANSFER", "origin": 1, "destination": 2, "amount": "1000.00" },
-        { "uuid": "t2", "type": "TRANSFER", "origin": 2, "destination": 1, "amount": "1500.00" }
+        {
+          "uuid": "t1",
+          "type": "TRANSFER",
+          "origin": 1,
+          "destination": 2,
+          "amount": "1000.00"
+        },
+        {
+          "uuid": "t2",
+          "type": "TRANSFER",
+          "origin": 2,
+          "destination": 1,
+          "amount": "1500.00"
+        }
       ],
       "expected": {
         "accounts": [
-          { "id": 1, "balance": "1500.00", "status": "ACTIVE" },
-          { "id": 2, "balance": "0.00", "status": "ACTIVE" }
+          {
+            "id": 1,
+            "balance": "1500.00",
+            "status": "ACTIVE"
+          },
+          {
+            "id": 2,
+            "balance": "0.00",
+            "status": "ACTIVE"
+          }
         ],
         "transactions": [
           {
             "uuid": "t1",
             "operationType": "NEUTER",
-            "reportedAmount": "0.00",
             "originBalanceBefore": "1000.00",
             "originBalanceAfter": "0.00",
             "destinationBalanceBefore": "500.00",
@@ -1007,7 +2078,6 @@
           {
             "uuid": "t2",
             "operationType": "NEUTER",
-            "reportedAmount": "0.00",
             "originBalanceBefore": "1500.00",
             "originBalanceAfter": "0.00",
             "destinationBalanceBefore": "0.00",
@@ -1019,36 +2089,103 @@
     {
       "name": "Removing an intermediate income makes a later expense fail (recalculation from scratch)",
       "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "0.00" },
-        { "id": 3, "type": "SUPPLIER" },
-        { "id": 4, "type": "CONSUMER" }
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "0.00"
+        },
+        {
+          "id": 3,
+          "type": "SUPPLIER"
+        },
+        {
+          "id": 4,
+          "type": "CONSUMER"
+        }
       ],
       "transactions": [
-        { "uuid": "t1", "type": "INCOME", "origin": 3, "destination": 1, "amount": "100.00", "operationDate": "2026-10-01T09:00:00" },
-        { "uuid": "t3", "type": "EXPENSE", "origin": 1, "destination": 4, "amount": "180.00", "operationDate": "2026-10-03T09:00:00" }
+        {
+          "uuid": "t1",
+          "type": "INCOME",
+          "origin": 3,
+          "destination": 1,
+          "amount": "100.00",
+          "operationDate": "2026-10-01T09:00:00"
+        },
+        {
+          "uuid": "t3",
+          "type": "EXPENSE",
+          "origin": 1,
+          "destination": 4,
+          "amount": "180.00",
+          "operationDate": "2026-10-03T09:00:00"
+        }
       ],
-      "error": { "code": "INSUFFICIENT_FUNDS", "transactionUuid": "t3" }
+      "error": {
+        "code": "INSUFFICIENT_FUNDS",
+        "transactionUuid": "t3"
+      }
     },
     {
       "name": "Cents are exact: 0.10 + 0.20 = 0.30 and amounts round half up to 2 decimals",
       "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "0.00" },
-        { "id": 3, "type": "SUPPLIER" },
-        { "id": 4, "type": "CONSUMER" }
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "0.00"
+        },
+        {
+          "id": 3,
+          "type": "SUPPLIER"
+        },
+        {
+          "id": 4,
+          "type": "CONSUMER"
+        }
       ],
       "transactions": [
-        { "uuid": "t1", "type": "INCOME", "origin": 3, "destination": 1, "amount": "0.10" },
-        { "uuid": "t2", "type": "INCOME", "origin": 3, "destination": 1, "amount": "0.20" },
-        { "uuid": "t3", "type": "EXPENSE", "origin": 1, "destination": 4, "amount": "0.15", "fee": "0.15" },
-        { "uuid": "t4", "type": "INCOME", "origin": 3, "destination": 1, "amount": "10.005" }
+        {
+          "uuid": "t1",
+          "type": "INCOME",
+          "origin": 3,
+          "destination": 1,
+          "amount": "0.10"
+        },
+        {
+          "uuid": "t2",
+          "type": "INCOME",
+          "origin": 3,
+          "destination": 1,
+          "amount": "0.20"
+        },
+        {
+          "uuid": "t3",
+          "type": "EXPENSE",
+          "origin": 1,
+          "destination": 4,
+          "amount": "0.15",
+          "fee": "0.15"
+        },
+        {
+          "uuid": "t4",
+          "type": "INCOME",
+          "origin": 3,
+          "destination": 1,
+          "amount": "10.005"
+        }
       ],
       "expected": {
-        "accounts": [{ "id": 1, "balance": "10.01", "status": "ACTIVE" }],
+        "accounts": [
+          {
+            "id": 1,
+            "balance": "10.01",
+            "status": "ACTIVE"
+          }
+        ],
         "transactions": [
           {
             "uuid": "t2",
             "operationType": "ADDITION",
-            "reportedAmount": "0.20",
             "originBalanceBefore": null,
             "originBalanceAfter": null,
             "destinationBalanceBefore": "0.10",
@@ -1057,7 +2194,6 @@
           {
             "uuid": "t3",
             "operationType": "SUBTRACTION",
-            "reportedAmount": "0.15",
             "originBalanceBefore": "0.30",
             "originBalanceAfter": "0.00",
             "destinationBalanceBefore": null,
@@ -1066,39 +2202,529 @@
           {
             "uuid": "t4",
             "operationType": "ADDITION",
-            "reportedAmount": "10.01",
             "originBalanceBefore": null,
             "originBalanceAfter": null,
             "destinationBalanceBefore": "0.00",
             "destinationBalanceAfter": "10.01"
           }
-        ]
+        ],
+        "report": {
+          "income": "10.31",
+          "expense": "0.30",
+          "net": "10.01"
+        }
       }
     },
     {
-      "name": "Full card cycle: purchase on credit, cash loan with fee, interest, then two payments",
+      "name": "5.3 example: cash loan used and paid → expense 10,000, net −10,000",
       "accounts": [
-        { "id": 1, "type": "STORAGE", "balance": "10000.00" },
-        { "id": 4, "type": "CONSUMER" },
-        { "id": 5, "type": "DEBTOR", "balance": "0.00", "creditLimit": "20000.00" }
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "10000.00"
+        },
+        {
+          "id": 5,
+          "type": "DEBTOR",
+          "balance": "0.00"
+        },
+        {
+          "id": 4,
+          "type": "CONSUMER"
+        }
       ],
       "transactions": [
-        { "uuid": "t1", "type": "DEBT", "origin": 5, "destination": 4, "amount": "1000.00", "operationDate": "2026-10-01T09:00:00" },
-        { "uuid": "t2", "type": "DEBT", "origin": 5, "destination": 1, "amount": "2000.00", "fee": "50.00", "operationDate": "2026-10-02T09:00:00" },
-        { "uuid": "t3", "type": "INTEREST", "origin": 5, "amount": "30.00", "operationDate": "2026-10-03T09:00:00" },
-        { "uuid": "t4", "type": "PAYMENT", "origin": 1, "destination": 5, "amount": "500.00", "operationDate": "2026-10-04T09:00:00" },
-        { "uuid": "t5", "type": "PAYMENT", "origin": 1, "destination": 5, "amount": "2530.00", "operationDate": "2026-10-05T09:00:00" }
+        {
+          "uuid": "t1",
+          "type": "DEBT",
+          "origin": 5,
+          "destination": 1,
+          "amount": "10000.00",
+          "operationDate": "2026-10-01T09:00:00"
+        },
+        {
+          "uuid": "t2",
+          "type": "EXPENSE",
+          "origin": 1,
+          "destination": 4,
+          "amount": "10000.00",
+          "operationDate": "2026-10-02T09:00:00"
+        },
+        {
+          "uuid": "t3",
+          "type": "PAYMENT",
+          "origin": 1,
+          "destination": 5,
+          "amount": "10000.00",
+          "operationDate": "2026-10-03T09:00:00"
+        }
       ],
       "expected": {
         "accounts": [
-          { "id": 1, "balance": "8920.00", "status": "ACTIVE" },
-          { "id": 5, "balance": "0.00", "status": "ACTIVE" }
+          {
+            "id": 1,
+            "balance": "0.00",
+            "status": "ACTIVE"
+          },
+          {
+            "id": 5,
+            "balance": "0.00",
+            "status": "ACTIVE"
+          }
         ],
         "transactions": [
           {
             "uuid": "t1",
             "operationType": "NEUTER",
-            "reportedAmount": "0.00",
+            "originBalanceBefore": "0.00",
+            "originBalanceAfter": "10000.00",
+            "destinationBalanceBefore": "10000.00",
+            "destinationBalanceAfter": "20000.00"
+          },
+          {
+            "uuid": "t2",
+            "operationType": "SUBTRACTION",
+            "originBalanceBefore": "20000.00",
+            "originBalanceAfter": "10000.00",
+            "destinationBalanceBefore": null,
+            "destinationBalanceAfter": null
+          },
+          {
+            "uuid": "t3",
+            "operationType": "NEUTER",
+            "originBalanceBefore": "10000.00",
+            "originBalanceAfter": "0.00",
+            "destinationBalanceBefore": "10000.00",
+            "destinationBalanceAfter": "0.00"
+          }
+        ],
+        "report": {
+          "income": "0.00",
+          "expense": "10000.00",
+          "net": "-10000.00"
+        }
+      }
+    },
+    {
+      "name": "5.3 example: cash loan returned unused → nothing counts",
+      "accounts": [
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "0.00"
+        },
+        {
+          "id": 5,
+          "type": "DEBTOR",
+          "balance": "0.00"
+        }
+      ],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "DEBT",
+          "origin": 5,
+          "destination": 1,
+          "amount": "10000.00",
+          "operationDate": "2026-10-01T09:00:00"
+        },
+        {
+          "uuid": "t2",
+          "type": "PAYMENT",
+          "origin": 1,
+          "destination": 5,
+          "amount": "10000.00",
+          "operationDate": "2026-10-02T09:00:00"
+        }
+      ],
+      "expected": {
+        "accounts": [
+          {
+            "id": 1,
+            "balance": "0.00",
+            "status": "ACTIVE"
+          },
+          {
+            "id": 5,
+            "balance": "0.00",
+            "status": "ACTIVE"
+          }
+        ],
+        "transactions": [
+          {
+            "uuid": "t1",
+            "operationType": "NEUTER",
+            "originBalanceBefore": "0.00",
+            "originBalanceAfter": "10000.00",
+            "destinationBalanceBefore": "0.00",
+            "destinationBalanceAfter": "10000.00"
+          },
+          {
+            "uuid": "t2",
+            "operationType": "NEUTER",
+            "originBalanceBefore": "10000.00",
+            "originBalanceAfter": "0.00",
+            "destinationBalanceBefore": "10000.00",
+            "destinationBalanceAfter": "0.00"
+          }
+        ],
+        "report": {
+          "income": "0.00",
+          "expense": "0.00",
+          "net": "0.00"
+        }
+      }
+    },
+    {
+      "name": "5.3 example: credit card purchase and payment → expense 10,000 (on the purchase)",
+      "accounts": [
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "10000.00"
+        },
+        {
+          "id": 5,
+          "type": "DEBTOR",
+          "balance": "0.00",
+          "creditLimit": "20000.00"
+        },
+        {
+          "id": 4,
+          "type": "CONSUMER"
+        }
+      ],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "EXPENSE",
+          "origin": 5,
+          "destination": 4,
+          "amount": "10000.00",
+          "operationDate": "2026-10-01T09:00:00"
+        },
+        {
+          "uuid": "t2",
+          "type": "PAYMENT",
+          "origin": 1,
+          "destination": 5,
+          "amount": "10000.00",
+          "operationDate": "2026-10-02T09:00:00"
+        }
+      ],
+      "expected": {
+        "accounts": [
+          {
+            "id": 1,
+            "balance": "0.00",
+            "status": "ACTIVE"
+          },
+          {
+            "id": 5,
+            "balance": "0.00",
+            "status": "ACTIVE"
+          }
+        ],
+        "transactions": [
+          {
+            "uuid": "t1",
+            "operationType": "SUBTRACTION",
+            "originBalanceBefore": "0.00",
+            "originBalanceAfter": "10000.00",
+            "destinationBalanceBefore": null,
+            "destinationBalanceAfter": null
+          },
+          {
+            "uuid": "t2",
+            "operationType": "NEUTER",
+            "originBalanceBefore": "10000.00",
+            "originBalanceAfter": "0.00",
+            "destinationBalanceBefore": "10000.00",
+            "destinationBalanceAfter": "0.00"
+          }
+        ],
+        "report": {
+          "income": "0.00",
+          "expense": "10000.00",
+          "net": "-10000.00"
+        }
+      }
+    },
+    {
+      "name": "5.3 example: purchase on credit (DEBT → CONSUMER) and payment → expense 10,000",
+      "accounts": [
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "10000.00"
+        },
+        {
+          "id": 5,
+          "type": "DEBTOR",
+          "balance": "0.00"
+        },
+        {
+          "id": 4,
+          "type": "CONSUMER"
+        }
+      ],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "DEBT",
+          "origin": 5,
+          "destination": 4,
+          "amount": "10000.00",
+          "operationDate": "2026-10-01T09:00:00"
+        },
+        {
+          "uuid": "t2",
+          "type": "PAYMENT",
+          "origin": 1,
+          "destination": 5,
+          "amount": "10000.00",
+          "operationDate": "2026-10-02T09:00:00"
+        }
+      ],
+      "expected": {
+        "accounts": [
+          {
+            "id": 1,
+            "balance": "0.00",
+            "status": "ACTIVE"
+          },
+          {
+            "id": 5,
+            "balance": "0.00",
+            "status": "ACTIVE"
+          }
+        ],
+        "transactions": [
+          {
+            "uuid": "t1",
+            "operationType": "SUBTRACTION",
+            "originBalanceBefore": "0.00",
+            "originBalanceAfter": "10000.00",
+            "destinationBalanceBefore": null,
+            "destinationBalanceAfter": null
+          },
+          {
+            "uuid": "t2",
+            "operationType": "NEUTER",
+            "originBalanceBefore": "10000.00",
+            "originBalanceAfter": "0.00",
+            "destinationBalanceBefore": "10000.00",
+            "destinationBalanceAfter": "0.00"
+          }
+        ],
+        "report": {
+          "income": "0.00",
+          "expense": "10000.00",
+          "net": "-10000.00"
+        }
+      }
+    },
+    {
+      "name": "5.3 example: credit card interest and payment → expense 500",
+      "accounts": [
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "500.00"
+        },
+        {
+          "id": 5,
+          "type": "DEBTOR",
+          "balance": "0.00"
+        }
+      ],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "INTEREST",
+          "origin": 5,
+          "amount": "500.00",
+          "operationDate": "2026-10-01T09:00:00"
+        },
+        {
+          "uuid": "t2",
+          "type": "PAYMENT",
+          "origin": 1,
+          "destination": 5,
+          "amount": "500.00",
+          "operationDate": "2026-10-02T09:00:00"
+        }
+      ],
+      "expected": {
+        "accounts": [
+          {
+            "id": 1,
+            "balance": "0.00",
+            "status": "ACTIVE"
+          },
+          {
+            "id": 5,
+            "balance": "0.00",
+            "status": "ACTIVE"
+          }
+        ],
+        "transactions": [
+          {
+            "uuid": "t1",
+            "operationType": "SUBTRACTION",
+            "originBalanceBefore": "0.00",
+            "originBalanceAfter": "500.00",
+            "destinationBalanceBefore": null,
+            "destinationBalanceAfter": null
+          },
+          {
+            "uuid": "t2",
+            "operationType": "NEUTER",
+            "originBalanceBefore": "500.00",
+            "originBalanceAfter": "0.00",
+            "destinationBalanceBefore": "500.00",
+            "destinationBalanceAfter": "0.00"
+          }
+        ],
+        "report": {
+          "income": "0.00",
+          "expense": "500.00",
+          "net": "-500.00"
+        }
+      }
+    },
+    {
+      "name": "5.3 example: payment with fee → expense 50 (only the fee)",
+      "accounts": [
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "10050.00"
+        },
+        {
+          "id": 5,
+          "type": "DEBTOR",
+          "balance": "10000.00"
+        }
+      ],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "PAYMENT",
+          "origin": 1,
+          "destination": 5,
+          "amount": "10000.00",
+          "fee": "50.00"
+        }
+      ],
+      "expected": {
+        "accounts": [
+          {
+            "id": 1,
+            "balance": "0.00",
+            "status": "ACTIVE"
+          },
+          {
+            "id": 5,
+            "balance": "0.00",
+            "status": "ACTIVE"
+          }
+        ],
+        "transactions": [
+          {
+            "uuid": "t1",
+            "operationType": "NEUTER",
+            "originBalanceBefore": "10050.00",
+            "originBalanceAfter": "0.00",
+            "destinationBalanceBefore": "10000.00",
+            "destinationBalanceAfter": "0.00"
+          }
+        ],
+        "report": {
+          "income": "0.00",
+          "expense": "50.00",
+          "net": "-50.00"
+        }
+      }
+    },
+    {
+      "name": "Full card cycle: purchase on credit, cash loan with fee, interest, then two payments",
+      "accounts": [
+        {
+          "id": 1,
+          "type": "STORAGE",
+          "balance": "10000.00"
+        },
+        {
+          "id": 4,
+          "type": "CONSUMER"
+        },
+        {
+          "id": 5,
+          "type": "DEBTOR",
+          "balance": "0.00",
+          "creditLimit": "20000.00"
+        }
+      ],
+      "transactions": [
+        {
+          "uuid": "t1",
+          "type": "DEBT",
+          "origin": 5,
+          "destination": 4,
+          "amount": "1000.00",
+          "operationDate": "2026-10-01T09:00:00"
+        },
+        {
+          "uuid": "t2",
+          "type": "DEBT",
+          "origin": 5,
+          "destination": 1,
+          "amount": "2000.00",
+          "fee": "50.00",
+          "operationDate": "2026-10-02T09:00:00"
+        },
+        {
+          "uuid": "t3",
+          "type": "INTEREST",
+          "origin": 5,
+          "amount": "30.00",
+          "operationDate": "2026-10-03T09:00:00"
+        },
+        {
+          "uuid": "t4",
+          "type": "PAYMENT",
+          "origin": 1,
+          "destination": 5,
+          "amount": "500.00",
+          "operationDate": "2026-10-04T09:00:00"
+        },
+        {
+          "uuid": "t5",
+          "type": "PAYMENT",
+          "origin": 1,
+          "destination": 5,
+          "amount": "2530.00",
+          "operationDate": "2026-10-05T09:00:00"
+        }
+      ],
+      "expected": {
+        "accounts": [
+          {
+            "id": 1,
+            "balance": "8920.00",
+            "status": "ACTIVE"
+          },
+          {
+            "id": 5,
+            "balance": "0.00",
+            "status": "ACTIVE"
+          }
+        ],
+        "transactions": [
+          {
+            "uuid": "t1",
+            "operationType": "SUBTRACTION",
             "originBalanceBefore": "0.00",
             "originBalanceAfter": "1000.00",
             "destinationBalanceBefore": null,
@@ -1106,8 +2732,7 @@
           },
           {
             "uuid": "t2",
-            "operationType": "ADDITION",
-            "reportedAmount": "2000.00",
+            "operationType": "NEUTER",
             "originBalanceBefore": "1000.00",
             "originBalanceAfter": "3000.00",
             "destinationBalanceBefore": "10000.00",
@@ -1115,8 +2740,7 @@
           },
           {
             "uuid": "t3",
-            "operationType": "NEUTER",
-            "reportedAmount": "0.00",
+            "operationType": "SUBTRACTION",
             "originBalanceBefore": "3000.00",
             "originBalanceAfter": "3030.00",
             "destinationBalanceBefore": null,
@@ -1124,8 +2748,7 @@
           },
           {
             "uuid": "t4",
-            "operationType": "SUBTRACTION",
-            "reportedAmount": "500.00",
+            "operationType": "NEUTER",
             "originBalanceBefore": "11950.00",
             "originBalanceAfter": "11450.00",
             "destinationBalanceBefore": "3030.00",
@@ -1133,14 +2756,18 @@
           },
           {
             "uuid": "t5",
-            "operationType": "SUBTRACTION",
-            "reportedAmount": "2530.00",
+            "operationType": "NEUTER",
             "originBalanceBefore": "11450.00",
             "originBalanceAfter": "8920.00",
             "destinationBalanceBefore": "2530.00",
             "destinationBalanceAfter": "0.00"
           }
-        ]
+        ],
+        "report": {
+          "income": "0.00",
+          "expense": "1080.00",
+          "net": "-1080.00"
+        }
       }
     }
   ]

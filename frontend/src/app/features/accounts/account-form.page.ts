@@ -33,6 +33,7 @@ import {
   ALLOWED_CHILDREN,
   AccountType,
   canBeTemporary,
+  freeTypeChanges,
   hasBalance,
 } from '../../shared/enums/account-type.enum';
 import { FieldErrorComponent } from '../../shared/forms/field-error.component';
@@ -352,21 +353,21 @@ export class AccountFormPage {
   });
 
   /**
-   * Mirrors the backend rules: no type change once the account has transactions; a credit line pins
-   * DEBTOR; the type must keep accepting its sub-accounts.
+   * Mirrors the backend rules: a credit line pins DEBTOR; with sub-accounts or transactions only
+   * STORAGE ↔ INVESTMENT, and the type must keep accepting its sub-accounts.
    */
   protected readonly typeOptions = computed<AccountType[]>(() => {
     const account = this.account.value();
     if (!account) {
       return [...ACCOUNT_TYPES];
     }
-    if (account.hasTransactions) {
-      return [account.type];
-    }
     if (account.credit) {
       return ['DEBTOR'];
     }
-    const options = ACCOUNT_TYPES.filter((type) =>
+    if (!account.hasChildren && !account.hasTransactions) {
+      return [...ACCOUNT_TYPES];
+    }
+    const options = freeTypeChanges(account.type).filter((type) =>
       account.childTypes.every((child) => ALLOWED_CHILDREN[type].includes(child)),
     );
     return options.includes(account.type) ? options : [account.type, ...options];

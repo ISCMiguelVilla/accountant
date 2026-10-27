@@ -65,4 +65,10 @@ public enum AccountType {
     public boolean isTransactional() {
         return this != GROUP;
     }
+
+    /** Type changes allowed even with sub-accounts or transactions. */
+    public static boolean isFreeTypeChange(AccountType from, AccountType to) {
+        Set<AccountType> interchangeable = EnumSet.of(STORAGE, INVESTMENT);
+        return interchangeable.contains(from) && interchangeable.contains(to);
+    }
 }

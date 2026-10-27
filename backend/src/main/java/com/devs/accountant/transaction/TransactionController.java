@@ -7,7 +7,6 @@ import com.devs.accountant.transaction.dto.BatchResponse;
 import com.devs.accountant.transaction.dto.TransactionFilter;
 import com.devs.accountant.transaction.dto.TransactionResponse;
 import com.devs.accountant.transaction.dto.TransactionRulesResponse;
-import com.devs.accountant.transaction.engine.Side;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -17,7 +16,6 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -48,10 +46,9 @@ public class TransactionController {
         return transactionService.saveBatch(request);
     }
 
-    /** {@code ?side=ORIGIN|DESTINATION} applies one side; without it, every pending side. */
     @PatchMapping("/transactions/{id}/apply")
-    public TransactionResponse apply(@PathVariable Long id, @RequestParam(required = false) Side side) {
-        return transactionService.apply(id, side);
+    public TransactionResponse apply(@PathVariable Long id) {
+        return transactionService.apply(id);
     }
 
     @GetMapping("/accounts/{accountId}/transactions")
