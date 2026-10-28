@@ -5,6 +5,11 @@
 backend/mvnw text eol=lf
 *.sh text eol=lf
 
+# Archivos que se copian a imágenes Linux (Dockerfiles, NGINX, compose)
+docker/** text eol=lf
+docker-compose.yml text eol=lf
+.env.example text eol=lf
+
 # Scripts de Windows con CRLF
 *.cmd text eol=crlf
 *.bat text eol=crlf
