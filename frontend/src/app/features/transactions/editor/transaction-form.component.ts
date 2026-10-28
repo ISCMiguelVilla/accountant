@@ -30,6 +30,7 @@ import { AccountAvatarComponent } from '../../../shared/components/account-avata
 import { hasBalance } from '../../../shared/enums/account-type.enum';
 import { TRANSACTION_TYPES, TransactionType } from '../../../shared/enums/transaction-type.enum';
 import { FieldErrorComponent } from '../../../shared/forms/field-error.component';
+import { Schedule } from '../../../shared/models/schedule.model';
 import { AccountOption } from '../../../shared/models/transaction.model';
 import { Cents, fromCents, toCents } from '../../../shared/money/money';
 import { MoneyPipe } from '../../../shared/money/money.pipe';
@@ -79,6 +80,13 @@ interface BalancePreview {
   template: `
     <p-card>
       <form class="flex flex-col gap-4" [formGroup]="form" (ngSubmit)="save()">
+        @if (scheduled()) {
+          <p-message
+            severity="info"
+            icon="pi pi-calendar"
+            [text]="'transactions.fromSchedule' | translate"
+          />
+        }
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <div class="flex flex-col gap-2">
             <label for="type">{{ 'transactions.type' | translate }}</label>
@@ -289,7 +297,7 @@ interface BalancePreview {
         }
 
         <div class="flex flex-wrap justify-end gap-2">
-          @if (editing()) {
+          @if (editing() || scheduled()) {
             <p-button
               [label]="'common.cancel' | translate"
               severity="secondary"
@@ -337,6 +345,7 @@ export class TransactionFormComponent {
   protected readonly descriptionEdited = signal(false);
   private readonly uuid = signal<string>(crypto.randomUUID());
   private readonly scheduleId = signal<number | null>(null);
+  protected readonly scheduled = computed(() => this.scheduleId() !== null);
   /** Shown after a rejected add / update until the form changes. */
   private readonly rejected = signal<string | null>(null);
 
@@ -597,7 +606,27 @@ export class TransactionFormComponent {
     }
   }
 
+  /** Prefills the form from an applicable schedule: type and accounts stay fixed, date = now. */
+  prefill(schedule: Schedule): void {
+    this.load({
+      uuid: crypto.randomUUID(),
+      type: schedule.type,
+      originAccountId: schedule.origin.id,
+      destinationAccountId: schedule.destination?.id ?? null,
+      amount: toCents(schedule.amount),
+      fee: toCents(schedule.fee),
+      description: schedule.description,
+      descriptionEdited: true,
+      applied: true,
+      operationDate: toLocalIso(new Date()),
+      scheduleId: schedule.id,
+    });
+  }
+
   protected cancel(): void {
+    if (!this.editing()) {
+      this.reset(false);
+    }
     this.done.emit();
   }
 
@@ -621,6 +650,23 @@ export class TransactionFormComponent {
     });
     this.form.markAsPristine();
     this.form.markAsUntouched();
+    this.lockScheduled();
+  }
+
+  /** A transaction from a schedule keeps its type and accounts (they must match the schedule). */
+  private lockScheduled(): void {
+    const controls = this.form.controls;
+    for (const control of [
+      controls.type,
+      controls.originAccountId,
+      controls.destinationAccountId,
+    ]) {
+      if (this.scheduled()) {
+        control.disable({ emitEvent: false });
+      } else {
+        control.enable({ emitEvent: false });
+      }
+    }
   }
 
   /** New transaction; after an add the type, accounts and date stay for fast capture. */
@@ -639,6 +685,7 @@ export class TransactionFormComponent {
       pending: false,
       description: '',
     });
+    this.lockScheduled();
   }
 
   private accountOf(id: number | null): AccountOption | undefined {

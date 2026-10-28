@@ -1,10 +1,18 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { parseISO } from 'date-fns';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
+import { CardModule } from 'primeng/card';
 import { MessageModule } from 'primeng/message';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TableModule } from 'primeng/table';
@@ -15,6 +23,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { ErrorNotifier } from '../../../core/http/error-notifier.service';
 import { LanguageService } from '../../../core/i18n/language.service';
 import { ApiProblem, toApiProblem } from '../../../shared/models/api-problem.model';
+import { Schedule } from '../../../shared/models/schedule.model';
 import { Cents, fromCents } from '../../../shared/money/money';
 import { MoneyPipe } from '../../../shared/money/money.pipe';
 import {
@@ -23,6 +32,7 @@ import {
 } from '../../../shared/pipes/transaction-type.pipes';
 import { EngineError, EngineResult } from '../engine/transaction-engine';
 import { DraftTransaction, TransactionDraftStore } from '../draft/transaction-draft.store';
+import { ScheduleApiService } from '../../schedules/schedule-api.service';
 import { TransactionApiService } from '../transaction-api.service';
 import { TransactionErrorMessages } from '../transaction-error-messages';
 import { BatchReviewDialogComponent } from './batch-review-dialog.component';
@@ -43,6 +53,7 @@ interface BatchRow {
     DatePipe,
     TranslatePipe,
     ButtonModule,
+    CardModule,
     MessageModule,
     ProgressSpinnerModule,
     TableModule,
@@ -102,6 +113,47 @@ interface BatchRow {
           <p-message severity="error" icon="pi pi-times-circle" [text]="message" />
         }
 
+        @if (applicable().length) {
+          <p-card>
+            <div class="mb-3 flex items-center gap-2">
+              <i class="pi pi-calendar text-muted-color"></i>
+              <h2 class="m-0 text-base font-semibold">
+                {{ 'transactions.batch.applicable' | translate }}
+              </h2>
+            </div>
+            <div class="flex flex-col divide-y divide-surface">
+              @for (schedule of applicable(); track schedule.id) {
+                <div class="flex flex-wrap items-center gap-3 py-2">
+                  <i [class]="schedule.type | transactionTypeIcon" class="text-muted-color"></i>
+                  <div class="flex min-w-0 flex-1 flex-col">
+                    <span class="truncate">{{ schedule.description }}</span>
+                    <small class="text-muted-color">
+                      {{ schedule.origin.name }}
+                      @if (schedule.destination; as destination) {
+                        → {{ destination.name }}
+                      }
+                      ·
+                      {{
+                        schedule.nextExecution | date: 'mediumDate' : undefined : language.locale()
+                      }}
+                    </small>
+                  </div>
+                  <span class="font-mono">{{
+                    schedule.amount | money: schedule.currency.iso
+                  }}</span>
+                  <p-button
+                    icon="pi pi-download"
+                    size="small"
+                    [outlined]="true"
+                    [label]="'transactions.apply.action' | translate"
+                    (onClick)="useSchedule(schedule)"
+                  />
+                </div>
+              }
+            </div>
+          </p-card>
+        }
+
         <app-transaction-form [editing]="editing()" (done)="editing.set(null)" />
 
         <p-table
@@ -141,6 +193,12 @@ interface BatchRow {
                   <span class="whitespace-nowrap">
                     <i [class]="row.item.type | transactionTypeIcon" class="mr-1"></i>
                     {{ 'enums.transactionType.' + row.item.type | translate }}
+                    @if (row.item.scheduleId !== null) {
+                      <i
+                        class="pi pi-calendar ml-1 text-muted-color"
+                        [pTooltip]="'transactions.fromSchedule' | translate"
+                      ></i>
+                    }
                   </span>
                   <small
                     class="max-w-56 truncate text-muted-color"
@@ -228,6 +286,7 @@ interface BatchRow {
 export class BatchEditorPage {
   protected readonly store = inject(TransactionDraftStore);
   private readonly api = inject(TransactionApiService);
+  private readonly scheduleApi = inject(ScheduleApiService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly translate = inject(TranslateService);
@@ -242,6 +301,14 @@ export class BatchEditorPage {
   protected readonly saving = signal(false);
   protected readonly reviewVisible = signal(false);
   protected readonly editing = signal<DraftTransaction | null>(null);
+  private readonly schedules = signal<Schedule[]>([]);
+  private readonly form = viewChild.required(TransactionFormComponent);
+
+  /** Applicable schedules not included in the draft yet (PROMPT 5.6.11). */
+  protected readonly applicable = computed(() => {
+    const used = new Set(this.store.transactions().map((item) => item.scheduleId));
+    return this.schedules().filter((schedule) => !used.has(schedule.id));
+  });
 
   protected readonly rows = computed<BatchRow[]>(() => {
     const items = this.store.transactions();
@@ -282,6 +349,16 @@ export class BatchEditorPage {
 
   protected cents(value: Cents | null): number | null {
     return value === null ? null : fromCents(value);
+  }
+
+  protected useSchedule(schedule: Schedule): void {
+    if (this.editing()) {
+      // Leaving edit mode resets the form on the next render; prefill after it.
+      this.editing.set(null);
+      setTimeout(() => this.form().prefill(schedule));
+      return;
+    }
+    this.form().prefill(schedule);
   }
 
   protected rowBackground(row: BatchRow): string | null {
@@ -360,8 +437,13 @@ export class BatchEditorPage {
       return;
     }
     this.loading.set(true);
-    forkJoin({ rules: this.api.rules(), accounts: this.api.accountOptions() }).subscribe({
-      next: ({ rules, accounts }) => {
+    forkJoin({
+      rules: this.api.rules(),
+      accounts: this.api.accountOptions(),
+      schedules: this.scheduleApi.applicable(),
+    }).subscribe({
+      next: ({ rules, accounts, schedules }) => {
+        this.schedules.set(schedules);
         this.store.init(user.id, rules, accounts);
         this.loading.set(false);
       },

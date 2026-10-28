@@ -175,6 +175,14 @@ public final class TransactionEngine {
                 originDisabled);
     }
 
+    /**
+     * Validates only the definition of a transaction (rule matrix, enabled fields, active accounts), without balances.
+     * Scheduled transactions use it so they follow exactly the same rules as normal ones.
+     */
+    public static void checkRules(EngineTransaction tx, EngineAccount origin, EngineAccount destination) {
+        validate(tx, origin, destination);
+    }
+
     // ---------------------------------------------------------------- effects
 
     /** EXPENSE origin: STORAGE pays {@code A + F}; a DEBTOR (card purchase) grows its debt by {@code A + F}. */

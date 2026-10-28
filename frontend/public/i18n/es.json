@@ -13,7 +13,8 @@
     "users": "Usuarios",
     "currencies": "Monedas",
     "accounts": "Cuentas",
-    "transactions": "Transacciones"
+    "transactions": "Transacciones",
+    "schedules": "Programadas"
   },
   "layout": {
     "toggleMenu": "Mostrar menú",
@@ -155,6 +156,11 @@
       "ADDITION": "Ingreso",
       "SUBTRACTION": "Gasto",
       "NEUTER": "Movimiento interno"
+    },
+    "scheduleStatus": {
+      "ACTIVE": "Activa",
+      "DISABLED": "Inactiva",
+      "DELETED": "Eliminada"
     }
   },
   "validation": {
@@ -470,7 +476,8 @@
       "understood": "Entendido",
       "empty": "Agrega transacciones con el formulario. El borrador se guarda en este navegador.",
       "saved": "Lote guardado con {{n}} transacción(es).",
-      "failedAt": "Transacción #{{n}} \"{{description}}\": {{message}}"
+      "failedAt": "Transacción #{{n}} \"{{description}}\": {{message}}",
+      "applicable": "Programadas aplicables (vencen hasta mañana)"
     },
     "review": {
       "title": "Resumen de movimientos",
@@ -498,6 +505,28 @@
       "profitHint": "Si el origen es una cuenta temporal, se deshabilitará.",
       "action": "Aplicar",
       "done": "Transacción aplicada."
-    }
+    },
+    "fromSchedule": "Transacción de una programada: el tipo y las cuentas no se pueden cambiar."
+  },
+  "schedules": {
+    "title": "Transacciones programadas",
+    "new": "Nueva programada",
+    "edit": "Editar programada",
+    "accounts": "Cuentas",
+    "cron": "Recurrencia (cron)",
+    "nextExecution": "Próxima ejecución",
+    "nextExecutionHelp": "Vacío: la primera ocurrencia de la recurrencia a partir de hoy.",
+    "lastExecution": "Última",
+    "skip": "Saltar ejecución",
+    "skipConfirm": "¿Saltar la próxima ejecución de \"{{description}}\"? Pasará a la siguiente fecha de su recurrencia.",
+    "skipped": "Ejecución saltada.",
+    "enable": "Activar",
+    "disable": "Desactivar",
+    "enabled": "Programada activada.",
+    "disabled": "Programada desactivada.",
+    "deleteTitle": "Eliminar programada",
+    "deleteConfirm": "¿Eliminar la programada \"{{description}}\"?",
+    "deleted": "Programada eliminada.",
+    "saved": "Programada guardada."
   }
 }

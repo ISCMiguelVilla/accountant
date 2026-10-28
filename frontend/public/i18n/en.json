@@ -13,7 +13,8 @@
     "users": "Users",
     "currencies": "Currencies",
     "accounts": "Accounts",
-    "transactions": "Transactions"
+    "transactions": "Transactions",
+    "schedules": "Scheduled"
   },
   "layout": {
     "toggleMenu": "Show menu",
@@ -155,6 +156,11 @@
       "ADDITION": "Income",
       "SUBTRACTION": "Expense",
       "NEUTER": "Internal movement"
+    },
+    "scheduleStatus": {
+      "ACTIVE": "Active",
+      "DISABLED": "Inactive",
+      "DELETED": "Deleted"
     }
   },
   "validation": {
@@ -470,7 +476,8 @@
       "understood": "Got it",
       "empty": "Add transactions with the form. The draft is kept in this browser.",
       "saved": "Batch saved with {{n}} transaction(s).",
-      "failedAt": "Transaction #{{n}} \"{{description}}\": {{message}}"
+      "failedAt": "Transaction #{{n}} \"{{description}}\": {{message}}",
+      "applicable": "Applicable schedules (due until tomorrow)"
     },
     "review": {
       "title": "Summary of movements",
@@ -498,6 +505,28 @@
       "profitHint": "If the origin is a temporary account, it will be disabled.",
       "action": "Apply",
       "done": "Transaction applied."
-    }
+    },
+    "fromSchedule": "Transaction from a schedule: its type and accounts cannot change."
+  },
+  "schedules": {
+    "title": "Scheduled transactions",
+    "new": "New schedule",
+    "edit": "Edit schedule",
+    "accounts": "Accounts",
+    "cron": "Recurrence (cron)",
+    "nextExecution": "Next execution",
+    "nextExecutionHelp": "Empty: the first occurrence of the recurrence from today.",
+    "lastExecution": "Last",
+    "skip": "Skip execution",
+    "skipConfirm": "Skip the next execution of \"{{description}}\"? It moves to the following date of its recurrence.",
+    "skipped": "Execution skipped.",
+    "enable": "Activate",
+    "disable": "Deactivate",
+    "enabled": "Schedule activated.",
+    "disabled": "Schedule deactivated.",
+    "deleteTitle": "Delete schedule",
+    "deleteConfirm": "Delete the schedule \"{{description}}\"?",
+    "deleted": "Schedule deleted.",
+    "saved": "Schedule saved."
   }
 }

@@ -2,7 +2,7 @@
 
 Aplicación web de **finanzas personales**, multiusuario y de uso doméstico, pensada para ejecutarse **en local** (en tu propio equipo o en tu red de casa). Permite registrar cuentas (bancos, efectivo, tarjetas de crédito, inversiones, préstamos…) y los movimientos de dinero entre ellas, y a partir de eso muestra cuánto tienes, cuánto debes, cuánto ganas, cuánto gastas y si vas cumpliendo tu meta de ahorro anual.
 
-> **Estado del proyecto:** en construcción. Este README describe el sistema completo tal como está especificado en [`docs/PROMPT-accountant-v2.md`](docs/PROMPT-accountant-v2.md), que es la especificación de referencia. La implementación avanza por fases (ver [Hoja de ruta](#14-hoja-de-ruta-fases)). **Fases completadas:** 1 (andamiaje: perfiles, Flyway V1, errores `ProblemDetail`, tema PrimeNG, i18n ES/EN, layout, Spotless/ESLint/Prettier) 2 (autenticación JWT con único administrador, administración de usuarios y monedas, paginado/filtros/orden genéricos y tablas sincronizadas con la URL) 3 (cuentas con jerarquía y validación de ciclos, edición manual de saldo, borrado lógico, líneas de crédito con fechas de corte/pago calculadas por cron y job diario, semilla de desarrollo) y 4 (motor de transacciones del backend: reglas, lote atómico con bloqueo pesimista, transacciones pendientes con su aplicación posterior, cuentas temporales y tipo de operación para reportes, probado con los casos compartidos de `docs/transaction-cases.json`; el detalle está en [`docs/business-rules.md`](docs/business-rules.md)) y 5 (editor de lotes: motor TypeScript probado con los mismos casos compartidos y con la matriz de [`docs/transaction-rules.json`](docs/transaction-rules.json), borrador en el navegador con detección de saldos base cambiados, vista previa de saldos, resumen de movimientos y guardado atómico; listado de transacciones con filtros y acción "Aplicar"; últimas transacciones en el detalle de cuenta). Las transacciones programadas (y su panel en el editor) y los reportes llegan en las siguientes fases.
+> **Estado del proyecto:** en construcción. Este README describe el sistema completo tal como está especificado en [`docs/PROMPT-accountant-v2.md`](docs/PROMPT-accountant-v2.md), que es la especificación de referencia. La implementación avanza por fases (ver [Hoja de ruta](#14-hoja-de-ruta-fases)). **Fases completadas:** 1 (andamiaje: perfiles, Flyway V1, errores `ProblemDetail`, tema PrimeNG, i18n ES/EN, layout, Spotless/ESLint/Prettier) 2 (autenticación JWT con único administrador, administración de usuarios y monedas, paginado/filtros/orden genéricos y tablas sincronizadas con la URL) 3 (cuentas con jerarquía y validación de ciclos, edición manual de saldo, borrado lógico, líneas de crédito con fechas de corte/pago calculadas por cron y job diario, semilla de desarrollo) y 4 (motor de transacciones del backend: reglas, lote atómico con bloqueo pesimista, transacciones pendientes con su aplicación posterior, cuentas temporales y tipo de operación para reportes, probado con los casos compartidos de `docs/transaction-cases.json`; el detalle está en [`docs/business-rules.md`](docs/business-rules.md)) y 5 (editor de lotes: motor TypeScript probado con los mismos casos compartidos y con la matriz de [`docs/transaction-rules.json`](docs/transaction-rules.json), borrador en el navegador con detección de saldos base cambiados, vista previa de saldos, resumen de movimientos y guardado atómico; listado de transacciones con filtros y acción "Aplicar"; últimas transacciones en el detalle de cuenta) y 6 (transacciones programadas: listado con filtros, formulario con las mismas reglas que una transacción y verificador de *cron*, activar/desactivar, saltar ejecución, borrado lógico y panel de programadas aplicables en el editor de lotes, que precarga el formulario y avanza la programada al guardar). El home (resumen y calendario) y Docker llegan en las siguientes fases.
 
 ---
 
@@ -380,7 +380,7 @@ El corazón de la aplicación es el **editor de lotes**:
 - Tienen tipo, cuentas, monto, fee, descripción y una expresión *cron* (6 campos de Spring), p. ej. `0 0 0 1 * *` = día 1 de cada mes.
 - Siguen **exactamente las mismas reglas** que las transacciones normales.
 - Las que vencen hasta mañana aparecen como **aplicables** en el editor de lotes; "Aplicar" precarga el formulario. Al guardarse, la programada avanza a su siguiente ejecución.
-- Se pueden activar/desactivar, **saltar** una ejecución, editar o borrar.
+- Se pueden activar/desactivar, **saltar** una ejecución, editar o borrar (borrado lógico). Sin "próxima ejecución" explícita, se usa la primera ocurrencia del *cron* desde hoy (hoy incluido); al cambiar el *cron* se recalcula.
 - Sus próximas ocurrencias se muestran en el calendario.
 
 ## 11. Opciones del sistema (pantallas)
@@ -465,8 +465,8 @@ GET    /accounts | /accounts/options | /accounts/in-use | /accounts/{id} | /acco
 POST   /accounts      PUT/DELETE /accounts/{id}      PUT/DELETE /accounts/{id}/credit
 GET    /transactions | /transactions/{id} | /transactions/rules
 POST   /transactions/batch       PATCH /transactions/{id}/apply
-GET    /schedules | /schedules/applicable | /schedules/cron/check
-POST   /schedules     PUT /schedules/{id}     PATCH /schedules/{id}/status | /schedules/{id}/skip
+GET    /schedules | /schedules/applicable | /schedules/{id} | /schedules/cron/check
+POST   /schedules     PUT /schedules/{id}     PATCH /schedules/{id}/status | /schedules/{id}/skip     DELETE /schedules/{id}
 GET    /goals         PUT/DELETE /goals/{year}
 GET    /dashboard/income-statement | /dashboard/expenses-by-concept | /dashboard/summary | /dashboard/progress
 GET    /calendar?from=&to=
