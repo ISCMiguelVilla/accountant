@@ -1,0 +1,35 @@
+package com.devs.accountant.goal;
+
+import com.devs.accountant.shared.persistence.AuditableEntity;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+/** Yearly savings goal: how much net (income − expense) the user wants to save in the year. */
+@Entity
+@Table(name = "goals")
+@Getter
+@Setter
+@NoArgsConstructor
+public class Goal extends AuditableEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "user_id", nullable = false, updatable = false)
+    private Long userId;
+
+    @Column(nullable = false, updatable = false)
+    private Integer year;
+
+    @Column(name = "target_amount", nullable = false, precision = 19, scale = 2)
+    private BigDecimal targetAmount;
+}

@@ -49,6 +49,67 @@
     "tabs": {
       "summary": "Summary",
       "calendar": "Calendar"
+    },
+    "statement": {
+      "title": "Income statement",
+      "dimension": "Period",
+      "dimensions": {
+        "YEAR": "Year",
+        "MONTH": "Month",
+        "WEEK": "Week",
+        "DAY": "Day"
+      },
+      "previous": "Previous period",
+      "next": "Next period",
+      "today": "Back to today",
+      "widen": "Widen window",
+      "narrow": "Narrow window",
+      "period": "Period"
+    },
+    "showTable": "Show table",
+    "showChart": "Show chart",
+    "income": "Income",
+    "expense": "Expenses",
+    "net": "Net",
+    "expenses": {
+      "title": "Expenses by concept",
+      "previous": "Previous month",
+      "next": "Next month",
+      "total": "Total",
+      "empty": "No expenses",
+      "fees": "Fees"
+    },
+    "cards": {
+      "title": "Accounts in use",
+      "available": "Available",
+      "debt": "Debt",
+      "cutOff": "Cut-off",
+      "paymentDue": "Payment"
+    },
+    "tree": {
+      "title": "Accounts summary",
+      "assets": "Available",
+      "debt": "Debt",
+      "net": "Net worth",
+      "empty": "No accounts with balance."
+    },
+    "goals": {
+      "title": "Yearly savings goal",
+      "set": "Set goal",
+      "saved": "Saved",
+      "expected": "expected to date",
+      "noGoal": "No goal for this year.",
+      "edit": "Edit goal",
+      "dialogTitle": "Savings goal {{year}}",
+      "target": "Amount to save in the year (net)",
+      "targetHelp": "Income minus expenses of the year. The monthly goal is one twelfth.",
+      "goalSaved": "Goal saved.",
+      "deleted": "Goal deleted.",
+      "status": {
+        "SUCCESS": "On track",
+        "WARNING": "Below",
+        "DANGER": "At risk"
+      }
     }
   },
   "errors": {

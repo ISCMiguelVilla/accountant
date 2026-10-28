@@ -1,10 +1,23 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
 import { TabsModule } from 'primeng/tabs';
+import { AccountCardsComponent } from './summary/account-cards.component';
+import { AccountTreeCardComponent } from './summary/account-tree-card.component';
+import { ExpensesCardComponent } from './summary/expenses-card.component';
+import { GoalProgressCardComponent } from './summary/goal-progress-card.component';
+import { IncomeStatementCardComponent } from './summary/income-statement-card.component';
 
 @Component({
   selector: 'app-home-page',
-  imports: [TranslatePipe, TabsModule],
+  imports: [
+    TranslatePipe,
+    TabsModule,
+    AccountCardsComponent,
+    AccountTreeCardComponent,
+    ExpensesCardComponent,
+    GoalProgressCardComponent,
+    IncomeStatementCardComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h1 class="mb-4 text-2xl font-semibold">{{ 'home.title' | translate }}</h1>
@@ -21,7 +34,17 @@ import { TabsModule } from 'primeng/tabs';
       </p-tablist>
       <p-tabpanels>
         <p-tabpanel value="summary">
-          <p class="text-muted-color">{{ 'common.comingSoon' | translate }}</p>
+          <div class="flex flex-col gap-4">
+            <app-account-cards />
+            <div class="grid grid-cols-1 gap-4 xl:grid-cols-3">
+              <app-income-statement-card class="xl:col-span-2" />
+              <app-expenses-card />
+            </div>
+            <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+              <app-account-tree-card />
+              <app-goal-progress-card />
+            </div>
+          </div>
         </p-tabpanel>
         <p-tabpanel value="calendar">
           <p class="text-muted-color">{{ 'common.comingSoon' | translate }}</p>

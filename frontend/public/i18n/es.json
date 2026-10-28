@@ -49,6 +49,67 @@
     "tabs": {
       "summary": "Resumen",
       "calendar": "Calendario"
+    },
+    "statement": {
+      "title": "Estado de resultados",
+      "dimension": "Periodo",
+      "dimensions": {
+        "YEAR": "Año",
+        "MONTH": "Mes",
+        "WEEK": "Semana",
+        "DAY": "Día"
+      },
+      "previous": "Periodo anterior",
+      "next": "Periodo siguiente",
+      "today": "Volver a hoy",
+      "widen": "Ampliar ventana",
+      "narrow": "Reducir ventana",
+      "period": "Periodo"
+    },
+    "showTable": "Ver tabla",
+    "showChart": "Ver gráfica",
+    "income": "Ingresos",
+    "expense": "Gastos",
+    "net": "Neto",
+    "expenses": {
+      "title": "Gastos por concepto",
+      "previous": "Mes anterior",
+      "next": "Mes siguiente",
+      "total": "Total",
+      "empty": "Sin gastos",
+      "fees": "Comisiones"
+    },
+    "cards": {
+      "title": "Cuentas en uso",
+      "available": "Disponible",
+      "debt": "Deuda",
+      "cutOff": "Corte",
+      "paymentDue": "Pago"
+    },
+    "tree": {
+      "title": "Resumen de cuentas",
+      "assets": "Disponible",
+      "debt": "Deuda",
+      "net": "Patrimonio neto",
+      "empty": "No hay cuentas con saldo."
+    },
+    "goals": {
+      "title": "Meta de ahorro anual",
+      "set": "Definir meta",
+      "saved": "Ahorrado",
+      "expected": "esperado a la fecha",
+      "noGoal": "Sin meta para este año.",
+      "edit": "Editar meta",
+      "dialogTitle": "Meta de ahorro {{year}}",
+      "target": "Monto a ahorrar en el año (neto)",
+      "targetHelp": "Ingresos menos gastos del año. La meta mensual es una doceava parte.",
+      "goalSaved": "Meta guardada.",
+      "deleted": "Meta eliminada.",
+      "status": {
+        "SUCCESS": "En meta",
+        "WARNING": "Por debajo",
+        "DANGER": "En riesgo"
+      }
     }
   },
   "errors": {
