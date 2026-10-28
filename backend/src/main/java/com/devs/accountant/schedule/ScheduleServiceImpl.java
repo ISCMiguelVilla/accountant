@@ -137,8 +137,8 @@ public class ScheduleServiceImpl implements ScheduleService {
     // ------------------------------------------------------------------ helpers
 
     /**
-     * Copies the request validating it with the same rules as a normal transaction. {@code recomputeNext}: without an
-     * explicit {@code nextExecution}, the first occurrence of the cron from today (today included).
+     * Copies the request validating it with the same rules as a normal transaction. {@code nextExecution} is the first
+     * cron occurrence from the requested date or, when absent and {@code recomputeNext}, from today (today included).
      */
     private void apply(Schedule schedule, ScheduleRequest request, boolean recomputeNext) {
         CronExpression cron = cronService.parse(request.cronExpression(), CRON_FIELD);
@@ -157,12 +157,23 @@ public class ScheduleServiceImpl implements ScheduleService {
         schedule.setDescription(request.description().trim());
         schedule.setCronExpression(request.cronExpression().trim());
         if (request.nextExecution() != null) {
-            schedule.setNextExecution(request.nextExecution());
+            schedule.setNextExecution(
+                    firstOccurrence(cron, request.nextExecution().toLocalDate()));
         } else if (recomputeNext || schedule.getNextExecution() == null) {
-            schedule.setNextExecution(cronService
-                    .nextOnOrAfter(cron, LocalDate.now(clock), CRON_FIELD)
-                    .atStartOfDay());
+            schedule.setNextExecution(firstOccurrence(cron, LocalDate.now(clock)));
         }
+    }
+
+    /**
+     * First execution of the cron on or after the start of {@code day}, with the cron's own time (a midnight value
+     * would make the same day appear twice and keep "skip" on the same day).
+     */
+    private static LocalDateTime firstOccurrence(CronExpression cron, LocalDate day) {
+        LocalDateTime next = cron.next(day.atStartOfDay().minusSeconds(1));
+        if (next == null) {
+            throw BusinessException.fieldError(CRON_FIELD, CronService.INVALID_CRON);
+        }
+        return next;
     }
 
     /** Matrix, destination mode, enabled fee and active accounts: exactly the normal transaction rules. */

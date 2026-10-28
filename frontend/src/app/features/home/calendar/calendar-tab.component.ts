@@ -133,7 +133,9 @@ interface Cell {
                 @for (event of day.creditEvents; track event.accountId + event.kind) {
                   <span class="flex items-center gap-1 truncate">
                     <i
-                      [class]="event.kind === 'CUT_OFF' ? 'pi pi-scissors' : 'pi pi-credit-card'"
+                      [class]="
+                        event.kind === 'CUT_OFF' ? 'pi pi-calendar-minus' : 'pi pi-credit-card'
+                      "
                       class="text-[0.65rem]"
                       [style.color]="event.color"
                     ></i>
@@ -218,7 +220,9 @@ interface Cell {
                 @for (event of cell.data!.creditEvents; track event.accountId + event.kind) {
                   <li class="flex items-center gap-2 text-sm">
                     <i
-                      [class]="event.kind === 'CUT_OFF' ? 'pi pi-scissors' : 'pi pi-credit-card'"
+                      [class]="
+                        event.kind === 'CUT_OFF' ? 'pi pi-calendar-minus' : 'pi pi-credit-card'
+                      "
                       [style.color]="event.color"
                     ></i>
                     <a class="flex-1 truncate" [routerLink]="['/accounts', event.accountId]"

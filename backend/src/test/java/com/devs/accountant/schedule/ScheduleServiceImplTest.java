@@ -149,6 +149,40 @@ class ScheduleServiceImplTest {
     }
 
     @Test
+    void theNextExecutionKeepsTheCronTimeSoSkipMovesToAnotherDay() {
+        account(1L, AccountType.STORAGE);
+        account(2L, AccountType.CONSUMER);
+
+        service.create(request(TransactionType.EXPENSE, 1L, 2L, "599.00", null, "0 0 9 30 * *"));
+        Schedule saved = saved();
+        assertThat(saved.getNextExecution()).isEqualTo(LocalDateTime.of(2026, 10, 30, 9, 0));
+
+        saved.setId(7L);
+        when(scheduleRepository.findByIdAndUserId(7L, USER)).thenReturn(Optional.of(saved));
+        service.skip(7L);
+        assertThat(saved.getNextExecution()).isEqualTo(LocalDateTime.of(2026, 11, 30, 9, 0));
+    }
+
+    @Test
+    void anExplicitNextExecutionSnapsToTheFirstCronOccurrenceFromThatDay() {
+        account(1L, AccountType.STORAGE);
+        account(2L, AccountType.CONSUMER);
+        ScheduleRequest request = new ScheduleRequest(
+                TransactionType.EXPENSE,
+                1L,
+                2L,
+                new BigDecimal("10.00"),
+                null,
+                "Gasto",
+                MONTHLY_15,
+                LocalDateTime.of(2026, 12, 3, 0, 0));
+
+        service.create(request);
+
+        assertThat(saved().getNextExecution()).isEqualTo(LocalDateTime.of(2026, 12, 15, 0, 0));
+    }
+
+    @Test
     void skipAdvancesToTheFollowingOccurrence() {
         Schedule schedule = stored(5L, MONTHLY_15, LocalDateTime.of(2026, 11, 15, 0, 0));
 
