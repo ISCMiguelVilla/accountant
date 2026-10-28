@@ -242,6 +242,8 @@ export class TransactionListPage {
       applied: 'single',
       dateFrom: 'single',
       dateTo: 'single',
+      appliedFrom: 'single',
+      appliedTo: 'single',
       batchUuid: 'single',
     },
   });

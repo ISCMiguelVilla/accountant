@@ -1,4 +1,5 @@
 import { AccountType } from '../../shared/enums/account-type.enum';
+import { TransactionType } from '../../shared/enums/transaction-type.enum';
 
 export const DIMENSIONS = ['YEAR', 'MONTH', 'WEEK', 'DAY'] as const;
 export type Dimension = (typeof DIMENSIONS)[number];
@@ -83,4 +84,37 @@ export interface YearProgress {
 export interface Goal {
   year: number;
   targetAmount: number;
+}
+
+export type CreditEventKind = 'CUT_OFF' | 'PAYMENT_DUE';
+
+export interface CreditEvent {
+  accountId: number;
+  accountName: string;
+  color: string | null;
+  kind: CreditEventKind;
+  /** Current debt of the account. */
+  balance: number;
+}
+
+export interface ScheduledOccurrence {
+  scheduleId: number;
+  type: TransactionType;
+  description: string;
+  amount: number;
+  /** HH:mm */
+  time: string;
+}
+
+export interface CalendarDay {
+  /** yyyy-MM-dd */
+  date: string;
+  income: number;
+  expense: number;
+  creditEvents: CreditEvent[];
+  scheduled: ScheduledOccurrence[];
+}
+
+export interface CalendarRange {
+  days: CalendarDay[];
 }

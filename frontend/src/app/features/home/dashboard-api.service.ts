@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
+  CalendarRange,
   Dimension,
   ExpensesByConcept,
   Goal,
@@ -50,5 +51,12 @@ export class DashboardApiService {
 
   deleteGoal(year: number): Observable<void> {
     return this.http.delete<void>(`${environment.apiUrl}/goals/${year}`);
+  }
+
+  /** Range of at most 62 days (yyyy-MM-dd, both inclusive). */
+  calendar(from: string, to: string): Observable<CalendarRange> {
+    return this.http.get<CalendarRange>(`${environment.apiUrl}/calendar`, {
+      params: new HttpParams().set('from', from).set('to', to),
+    });
   }
 }

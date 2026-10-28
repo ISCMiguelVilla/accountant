@@ -76,6 +76,8 @@ public class TransactionServiceImpl implements TransactionService {
                     "applied",
                     "dateFrom",
                     "dateTo",
+                    "appliedFrom",
+                    "appliedTo",
                     "amountMin",
                     "amountMax",
                     "description",
@@ -494,6 +496,15 @@ public class TransactionServiceImpl implements TransactionService {
                         : (root, query, cb) -> cb.lessThan(
                                 root.get("operationDate"),
                                 filter.dateTo().plusDays(1).atStartOfDay()),
+                filter.appliedFrom() == null
+                        ? null
+                        : (root, query, cb) -> cb.greaterThanOrEqualTo(
+                                root.get("appliedAt"), filter.appliedFrom().atStartOfDay()),
+                filter.appliedTo() == null
+                        ? null
+                        : (root, query, cb) -> cb.lessThan(
+                                root.get("appliedAt"),
+                                filter.appliedTo().plusDays(1).atStartOfDay()),
                 filter.amountMin() == null
                         ? null
                         : (root, query, cb) -> cb.greaterThanOrEqualTo(root.get("amount"), filter.amountMin()),

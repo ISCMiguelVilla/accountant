@@ -17,4 +17,6 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long>, JpaSp
     @EntityGraph(attributePaths = {"origin", "origin.currency", "destination"})
     List<Schedule> findByUserIdAndStatusAndNextExecutionBeforeOrderByNextExecutionAscIdAsc(
             Long userId, ScheduleStatus status, LocalDateTime limit);
+
+    List<Schedule> findByUserIdAndStatus(Long userId, ScheduleStatus status);
 }

@@ -27,6 +27,25 @@ public class DashboardRepository {
 
     public record MonthNet(int year, int month, BigDecimal net) {}
 
+    public record DayAmounts(LocalDate date, BigDecimal income, BigDecimal expense) {}
+
+    /** Income and expense per day with applied transactions (days without them are absent). */
+    public List<DayAmounts> dailyAmounts(Long userId, LocalDateTime from, LocalDateTime to) {
+        return jdbc.sql("""
+                        SELECT CAST(t.applied_at AS date) AS day, SUM(%s) AS income, SUM(%s) AS expense
+                        FROM transactions t
+                        WHERE t.user_id = :userId AND t.applied = TRUE
+                          AND t.applied_at >= :from AND t.applied_at < :to
+                        GROUP BY 1
+                        """.formatted(INCOME, EXPENSE))
+                .param("userId", userId)
+                .param("from", from)
+                .param("to", to)
+                .query((rs, row) -> new DayAmounts(
+                        rs.getDate("day").toLocalDate(), rs.getBigDecimal("income"), rs.getBigDecimal("expense")))
+                .list();
+    }
+
     public List<IncomeStatementResponse.Period> incomeStatement(
             Long userId, Dimension dimension, LocalDate start, LocalDate last) {
         return jdbc.sql("""

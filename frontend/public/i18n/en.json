@@ -110,6 +110,18 @@
         "WARNING": "Below",
         "DANGER": "At risk"
       }
+    },
+    "calendar": {
+      "previous": "Previous month",
+      "next": "Next month",
+      "today": "Today",
+      "CUT_OFF": "Cut-off",
+      "PAYMENT_DUE": "Payment",
+      "applied": "Applied transactions",
+      "noTransactions": "No transactions applied this day.",
+      "credit": "Cards and credit",
+      "scheduled": "Scheduled",
+      "viewSchedules": "View schedules"
     }
   },
   "errors": {

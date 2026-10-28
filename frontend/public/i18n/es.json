@@ -110,6 +110,18 @@
         "WARNING": "Por debajo",
         "DANGER": "En riesgo"
       }
+    },
+    "calendar": {
+      "previous": "Mes anterior",
+      "next": "Mes siguiente",
+      "today": "Hoy",
+      "CUT_OFF": "Corte",
+      "PAYMENT_DUE": "Pago",
+      "applied": "Transacciones aplicadas",
+      "noTransactions": "No hay transacciones aplicadas este día.",
+      "credit": "Tarjetas y créditos",
+      "scheduled": "Programadas",
+      "viewSchedules": "Ver programadas"
     }
   },
   "errors": {

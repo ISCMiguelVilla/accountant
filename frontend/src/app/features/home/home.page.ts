@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
 import { TabsModule } from 'primeng/tabs';
+import { CalendarTabComponent } from './calendar/calendar-tab.component';
 import { AccountCardsComponent } from './summary/account-cards.component';
 import { AccountTreeCardComponent } from './summary/account-tree-card.component';
 import { ExpensesCardComponent } from './summary/expenses-card.component';
@@ -14,6 +15,7 @@ import { IncomeStatementCardComponent } from './summary/income-statement-card.co
     TabsModule,
     AccountCardsComponent,
     AccountTreeCardComponent,
+    CalendarTabComponent,
     ExpensesCardComponent,
     GoalProgressCardComponent,
     IncomeStatementCardComponent,
@@ -47,7 +49,7 @@ import { IncomeStatementCardComponent } from './summary/income-statement-card.co
           </div>
         </p-tabpanel>
         <p-tabpanel value="calendar">
-          <p class="text-muted-color">{{ 'common.comingSoon' | translate }}</p>
+          <app-calendar-tab />
         </p-tabpanel>
       </p-tabpanels>
     </p-tabs>
