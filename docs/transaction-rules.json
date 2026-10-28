@@ -1,0 +1,326 @@
+{
+  "types" : [ {
+    "type" : "INCOME",
+    "origins" : [ "SUPPLIER" ],
+    "destinations" : [ "STORAGE" ],
+    "destinationMode" : "REQUIRED",
+    "pendingAllowed" : false,
+    "variants" : [ {
+      "origin" : "SUPPLIER",
+      "destination" : "STORAGE",
+      "operationType" : "ADDITION",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    } ]
+  }, {
+    "type" : "EXPENSE",
+    "origins" : [ "STORAGE", "DEBTOR" ],
+    "destinations" : [ "CONSUMER" ],
+    "destinationMode" : "REQUIRED",
+    "pendingAllowed" : true,
+    "variants" : [ {
+      "origin" : "STORAGE",
+      "destination" : "CONSUMER",
+      "operationType" : "SUBTRACTION",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : false
+    }, {
+      "origin" : "DEBTOR",
+      "destination" : "CONSUMER",
+      "operationType" : "SUBTRACTION",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : false
+    } ]
+  }, {
+    "type" : "TRANSFER",
+    "origins" : [ "STORAGE" ],
+    "destinations" : [ "STORAGE" ],
+    "destinationMode" : "REQUIRED",
+    "pendingAllowed" : true,
+    "variants" : [ {
+      "origin" : "STORAGE",
+      "destination" : "STORAGE",
+      "operationType" : "NEUTER",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    } ]
+  }, {
+    "type" : "INVEST",
+    "origins" : [ "STORAGE", "INVESTMENT" ],
+    "destinations" : [ "BUSINESS", "INVESTMENT" ],
+    "destinationMode" : "REQUIRED",
+    "pendingAllowed" : true,
+    "variants" : [ {
+      "origin" : "STORAGE",
+      "destination" : "BUSINESS",
+      "operationType" : "NEUTER",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    }, {
+      "origin" : "STORAGE",
+      "destination" : "INVESTMENT",
+      "operationType" : "NEUTER",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    }, {
+      "origin" : "INVESTMENT",
+      "destination" : "BUSINESS",
+      "operationType" : "NEUTER",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    }, {
+      "origin" : "INVESTMENT",
+      "destination" : "INVESTMENT",
+      "operationType" : "NEUTER",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    } ]
+  }, {
+    "type" : "PROFIT",
+    "origins" : [ "BUSINESS", "INVESTMENT" ],
+    "destinations" : [ "STORAGE", "INVESTMENT" ],
+    "destinationMode" : "REQUIRED",
+    "pendingAllowed" : true,
+    "variants" : [ {
+      "origin" : "BUSINESS",
+      "destination" : "STORAGE",
+      "operationType" : "NEUTER",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    }, {
+      "origin" : "BUSINESS",
+      "destination" : "INVESTMENT",
+      "operationType" : "NEUTER",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    }, {
+      "origin" : "INVESTMENT",
+      "destination" : "STORAGE",
+      "operationType" : "NEUTER",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    }, {
+      "origin" : "INVESTMENT",
+      "destination" : "INVESTMENT",
+      "operationType" : "NEUTER",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    } ]
+  }, {
+    "type" : "DIVIDEND",
+    "origins" : [ "STORAGE", "BUSINESS", "INVESTMENT", "CREDITOR" ],
+    "destinations" : [ "STORAGE", "BUSINESS", "INVESTMENT", "CREDITOR" ],
+    "destinationMode" : "OPTIONAL",
+    "pendingAllowed" : false,
+    "variants" : [ {
+      "origin" : "STORAGE",
+      "destination" : "STORAGE",
+      "operationType" : "ADDITION",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    }, {
+      "origin" : "STORAGE",
+      "destination" : "BUSINESS",
+      "operationType" : "ADDITION",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    }, {
+      "origin" : "STORAGE",
+      "destination" : "INVESTMENT",
+      "operationType" : "ADDITION",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    }, {
+      "origin" : "STORAGE",
+      "destination" : "CREDITOR",
+      "operationType" : "ADDITION",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    }, {
+      "origin" : "STORAGE",
+      "destination" : null,
+      "operationType" : "ADDITION",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    }, {
+      "origin" : "BUSINESS",
+      "destination" : "STORAGE",
+      "operationType" : "ADDITION",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    }, {
+      "origin" : "BUSINESS",
+      "destination" : "BUSINESS",
+      "operationType" : "ADDITION",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    }, {
+      "origin" : "BUSINESS",
+      "destination" : "INVESTMENT",
+      "operationType" : "ADDITION",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    }, {
+      "origin" : "BUSINESS",
+      "destination" : "CREDITOR",
+      "operationType" : "ADDITION",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    }, {
+      "origin" : "BUSINESS",
+      "destination" : null,
+      "operationType" : "ADDITION",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    }, {
+      "origin" : "INVESTMENT",
+      "destination" : "STORAGE",
+      "operationType" : "ADDITION",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    }, {
+      "origin" : "INVESTMENT",
+      "destination" : "BUSINESS",
+      "operationType" : "ADDITION",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    }, {
+      "origin" : "INVESTMENT",
+      "destination" : "INVESTMENT",
+      "operationType" : "ADDITION",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    }, {
+      "origin" : "INVESTMENT",
+      "destination" : "CREDITOR",
+      "operationType" : "ADDITION",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    }, {
+      "origin" : "INVESTMENT",
+      "destination" : null,
+      "operationType" : "ADDITION",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    }, {
+      "origin" : "CREDITOR",
+      "destination" : "STORAGE",
+      "operationType" : "ADDITION",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    }, {
+      "origin" : "CREDITOR",
+      "destination" : "BUSINESS",
+      "operationType" : "ADDITION",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    }, {
+      "origin" : "CREDITOR",
+      "destination" : "INVESTMENT",
+      "operationType" : "ADDITION",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    }, {
+      "origin" : "CREDITOR",
+      "destination" : "CREDITOR",
+      "operationType" : "ADDITION",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    }, {
+      "origin" : "CREDITOR",
+      "destination" : null,
+      "operationType" : "ADDITION",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    } ]
+  }, {
+    "type" : "INTEREST",
+    "origins" : [ "STORAGE", "BUSINESS", "INVESTMENT", "DEBTOR" ],
+    "destinations" : [ ],
+    "destinationMode" : "NONE",
+    "pendingAllowed" : false,
+    "variants" : [ {
+      "origin" : "STORAGE",
+      "destination" : null,
+      "operationType" : "SUBTRACTION",
+      "feeEnabled" : false,
+      "feeMustBeBelowAmount" : false
+    }, {
+      "origin" : "BUSINESS",
+      "destination" : null,
+      "operationType" : "SUBTRACTION",
+      "feeEnabled" : false,
+      "feeMustBeBelowAmount" : false
+    }, {
+      "origin" : "INVESTMENT",
+      "destination" : null,
+      "operationType" : "SUBTRACTION",
+      "feeEnabled" : false,
+      "feeMustBeBelowAmount" : false
+    }, {
+      "origin" : "DEBTOR",
+      "destination" : null,
+      "operationType" : "SUBTRACTION",
+      "feeEnabled" : false,
+      "feeMustBeBelowAmount" : false
+    } ]
+  }, {
+    "type" : "BORROW",
+    "origins" : [ "STORAGE" ],
+    "destinations" : [ "CREDITOR" ],
+    "destinationMode" : "REQUIRED",
+    "pendingAllowed" : false,
+    "variants" : [ {
+      "origin" : "STORAGE",
+      "destination" : "CREDITOR",
+      "operationType" : "NEUTER",
+      "feeEnabled" : false,
+      "feeMustBeBelowAmount" : false
+    } ]
+  }, {
+    "type" : "COLLECTION",
+    "origins" : [ "CREDITOR" ],
+    "destinations" : [ "STORAGE" ],
+    "destinationMode" : "REQUIRED",
+    "pendingAllowed" : false,
+    "variants" : [ {
+      "origin" : "CREDITOR",
+      "destination" : "STORAGE",
+      "operationType" : "NEUTER",
+      "feeEnabled" : false,
+      "feeMustBeBelowAmount" : false
+    } ]
+  }, {
+    "type" : "DEBT",
+    "origins" : [ "DEBTOR" ],
+    "destinations" : [ "STORAGE", "CONSUMER" ],
+    "destinationMode" : "REQUIRED",
+    "pendingAllowed" : false,
+    "variants" : [ {
+      "origin" : "DEBTOR",
+      "destination" : "STORAGE",
+      "operationType" : "NEUTER",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : true
+    }, {
+      "origin" : "DEBTOR",
+      "destination" : "CONSUMER",
+      "operationType" : "SUBTRACTION",
+      "feeEnabled" : false,
+      "feeMustBeBelowAmount" : false
+    } ]
+  }, {
+    "type" : "PAYMENT",
+    "origins" : [ "STORAGE" ],
+    "destinations" : [ "DEBTOR" ],
+    "destinationMode" : "REQUIRED",
+    "pendingAllowed" : false,
+    "variants" : [ {
+      "origin" : "STORAGE",
+      "destination" : "DEBTOR",
+      "operationType" : "NEUTER",
+      "feeEnabled" : true,
+      "feeMustBeBelowAmount" : false
+    } ]
+  } ]
+}

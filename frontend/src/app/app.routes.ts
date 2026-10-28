@@ -25,6 +25,12 @@ export const routes: Routes = [
           import('./features/accounts/accounts.routes').then((m) => m.ACCOUNTS_ROUTES),
       },
       {
+        path: 'transactions',
+        data: { [BREADCRUMB]: 'menu.transactions' },
+        loadChildren: () =>
+          import('./features/transactions/transactions.routes').then((m) => m.TRANSACTIONS_ROUTES),
+      },
+      {
         path: 'admin',
         canActivate: [adminGuard],
         data: { [BREADCRUMB]: 'menu.admin' },

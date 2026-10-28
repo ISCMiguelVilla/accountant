@@ -25,7 +25,10 @@ import com.devs.accountant.transaction.dto.BatchRequest;
 import com.devs.accountant.transaction.dto.TransactionRequest;
 import com.devs.accountant.transaction.dto.TransactionRulesResponse;
 import com.devs.accountant.transaction.engine.DestinationMode;
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -43,6 +46,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.json.JsonMapper;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -51,6 +56,7 @@ class TransactionServiceImplTest {
     private static final long USER = 1L;
     private static final ZoneId MX = ZoneId.of("America/Mexico_City");
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 10, 27, 9, 0);
+    private static final Path RULES_FIXTURE = Path.of("..", "docs", "transaction-rules.json");
 
     @Mock
     private TransactionRepository transactionRepository;
@@ -408,6 +414,21 @@ class TransactionServiceImplTest {
         var interest = rule(rules, TransactionType.INTEREST);
         assertThat(interest.variants())
                 .allSatisfy(v -> assertThat(v.operationType()).isEqualTo(OperationType.SUBTRACTION));
+    }
+
+    /**
+     * {@code docs/transaction-rules.json} is the snapshot of this endpoint the TypeScript engine tests use; it must
+     * stay identical. Regenerate it with {@code -Drules.fixture.update=true}.
+     */
+    @Test
+    void rulesFixtureMatchesTheEndpoint() throws IOException {
+        JsonMapper mapper =
+                JsonMapper.builder().enable(SerializationFeature.INDENT_OUTPUT).build();
+        String actual = mapper.writeValueAsString(service.rules()) + "\n";
+        if (Boolean.getBoolean("rules.fixture.update")) {
+            Files.writeString(RULES_FIXTURE, actual);
+        }
+        assertThat(mapper.readTree(Files.readString(RULES_FIXTURE))).isEqualTo(mapper.readTree(actual));
     }
 
     // ------------------------------------------------------------ helpers

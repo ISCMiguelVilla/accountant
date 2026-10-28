@@ -18,6 +18,7 @@ export const APP_MENU: AppMenuSection[] = [
     items: [
       { label: 'menu.home', icon: 'pi pi-home', route: '/home' },
       { label: 'menu.accounts', icon: 'pi pi-wallet', route: '/accounts' },
+      { label: 'menu.transactions', icon: 'pi pi-arrow-right-arrow-left', route: '/transactions' },
     ],
   },
   {

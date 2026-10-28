@@ -17,6 +17,7 @@ import { AccountAvatarComponent } from '../../shared/components/account-avatar.c
 import { MoneyPipe } from '../../shared/money/money.pipe';
 import { AccountTypeSeverityPipe } from '../../shared/pipes/account-type.pipes';
 import { StatusSeverityPipe } from '../../shared/pipes/status-severity.pipe';
+import { AccountTransactionsComponent } from '../transactions/account-transactions.component';
 import { AccountApiService } from './account-api.service';
 
 @Component({
@@ -32,6 +33,7 @@ import { AccountApiService } from './account-api.service';
     TableModule,
     TagModule,
     AccountAvatarComponent,
+    AccountTransactionsComponent,
     AccountTypeSeverityPipe,
     MoneyPipe,
     StatusSeverityPipe,
@@ -192,7 +194,7 @@ import { AccountApiService } from './account-api.service';
         </p-card>
 
         <p-card [header]="'accounts.lastTransactions' | translate" styleClass="lg:col-span-3">
-          <p class="m-0 text-muted-color">{{ 'accounts.noTransactionsYet' | translate }}</p>
+          <app-account-transactions [accountId]="account.id" (changed)="reload()" />
         </p-card>
       </div>
     } @else if (account.error()) {
@@ -225,6 +227,11 @@ export class AccountDetailPage {
           )
         : of(null),
   });
+
+  protected reload(): void {
+    this.account.reload();
+    this.children.reload();
+  }
 
   protected confirmDelete(): void {
     const account = this.account.value();

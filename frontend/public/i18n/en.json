@@ -12,7 +12,8 @@
     "admin": "Administration",
     "users": "Users",
     "currencies": "Currencies",
-    "accounts": "Accounts"
+    "accounts": "Accounts",
+    "transactions": "Transactions"
   },
   "layout": {
     "toggleMenu": "Show menu",
@@ -39,7 +40,8 @@
     "delete": "Delete",
     "yes": "Yes",
     "no": "No",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "optional": "optional"
   },
   "home": {
     "title": "Home",
@@ -135,6 +137,24 @@
       "ACTIVE": "Active",
       "DISABLED": "Disabled",
       "DELETED": "Deleted"
+    },
+    "transactionType": {
+      "INCOME": "Income",
+      "EXPENSE": "Expense",
+      "TRANSFER": "Transfer",
+      "INVEST": "Investment",
+      "PROFIT": "Investment withdrawal",
+      "DIVIDEND": "Yield",
+      "INTEREST": "Interest or charge",
+      "BORROW": "Loan given",
+      "COLLECTION": "Loan collection",
+      "DEBT": "Debt",
+      "PAYMENT": "Debt payment"
+    },
+    "operationType": {
+      "ADDITION": "Income",
+      "SUBTRACTION": "Expense",
+      "NEUTER": "Internal movement"
     }
   },
   "validation": {
@@ -163,7 +183,17 @@
       "PositiveOrZero": "Must be greater than or equal to 0.",
       "Positive": "Must be greater than 0.",
       "Digits": "At most 2 decimals.",
-      "TYPE_CHANGE_REQUIRES_ZERO_BALANCE": "To switch to a type without balance, the balance must be 0."
+      "TYPE_CHANGE_REQUIRES_ZERO_BALANCE": "To switch to a type without balance, the balance must be 0.",
+      "SAME_ACCOUNT": "Origin and destination must be different accounts.",
+      "ORIGIN_NOT_ALLOWED": "This account cannot be the origin of this transaction type.",
+      "DESTINATION_REQUIRED": "This transaction type requires a destination account.",
+      "DESTINATION_NOT_ALLOWED": "This account cannot be the destination of this transaction type.",
+      "FEE_NOT_ALLOWED": "This transaction type does not allow a fee.",
+      "FEE_NOT_BELOW_AMOUNT": "The fee must be lower than the amount.",
+      "PENDING_NOT_ALLOWED": "This transaction type cannot be pending.",
+      "ACCOUNT_NOT_FOUND": "The account does not exist or is no longer available.",
+      "INVALID_SCHEDULE": "The scheduled transaction does not exist or is not active.",
+      "SCHEDULE_MISMATCH": "The transaction does not match its schedule (type, origin or destination)."
     },
     "min": "The minimum value is {{min}}."
   },
@@ -193,7 +223,6 @@
     "subAccounts": "Sub-accounts",
     "noSubAccounts": "This account has no sub-accounts.",
     "lastTransactions": "Latest transactions",
-    "noTransactionsYet": "The transactions of this account will appear here.",
     "backToList": "Back to accounts",
     "credit": {
       "title": "Credit line",
@@ -367,6 +396,108 @@
       "zoomOut": "Zoom out",
       "rotateRight": "Rotate right",
       "rotateLeft": "Rotate left"
+    }
+  },
+  "transactions": {
+    "title": "Transactions",
+    "search": "Search by description",
+    "type": "Type",
+    "origin": "Origin",
+    "destination": "Destination",
+    "account": "Account",
+    "amount": "Amount",
+    "fee": "Fee",
+    "operationDate": "Date",
+    "description": "Description",
+    "operationType": "Operation type",
+    "applied": "Applied",
+    "appliedFilter": "Application",
+    "appliedOnly": "Applied",
+    "pendingOnly": "Pending",
+    "dateFrom": "From",
+    "dateTo": "To",
+    "batchFilter": "Saved batch",
+    "counterparty": "Counterparty",
+    "balanceBeforeAfter": "Balance before → after",
+    "viewAll": "View all",
+    "noneForAccount": "This account has no transactions yet.",
+    "selectAccount": "Select an account",
+    "useTotal": "Use full balance",
+    "feeDisabled": "This transaction type does not allow a fee.",
+    "minDate": "Cannot be before {{date}} (last saved transaction).",
+    "pending": "Pending",
+    "pendingHelp": {
+      "EXPENSE": "The charge to the origin account is reflected when applied.",
+      "TRANSFER": "The origin is debited now; the destination is credited when applied.",
+      "INVEST": "The origin is debited now; the destination is credited when applied.",
+      "PROFIT": "The origin is debited now; the destination is credited when applied."
+    },
+    "pendingPreview": "Pending: this balance changes when applied.",
+    "pendingTag": "Pending",
+    "availableCreditAfter": "Credit available after",
+    "breaksLater": "With this change transaction #{{n}} is no longer valid: {{message}}",
+    "add": "Add",
+    "update": "Update",
+    "rejected": "Change rejected",
+    "failedTransaction": "\"{{description}}\": {{message}}",
+    "typeHelp": {
+      "INCOME": "Salary or payment: from an income supplier to a storage.",
+      "EXPENSE": "Spending with your own money or a card.",
+      "TRANSFER": "Move money between your storages.",
+      "INVEST": "Put money into an investment or business.",
+      "PROFIT": "Take the resources out of an investment or business.",
+      "DIVIDEND": "Yield an investment gives you.",
+      "INTEREST": "Interest, fee or charge against you.",
+      "BORROW": "Lend money to someone.",
+      "COLLECTION": "Collect a loan you made.",
+      "DEBT": "Cash loan or purchase on credit.",
+      "PAYMENT": "Pay a card or loan."
+    },
+    "errors": {
+      "INSUFFICIENT_FUNDS": "Insufficient funds in {{account}}: available {{available}}, required {{required}}.",
+      "CREDIT_LIMIT_EXCEEDED": "The credit limit of {{account}} is exceeded: available {{available}}, required {{required}}.",
+      "SENSELESS_TRANSACTION": "The amount exceeds the balance of {{account}} ({{available}}).",
+      "ACCOUNT_DISABLED": "The account {{account}} is disabled.",
+      "DATE_BEFORE_LAST_TRANSACTION": "The date is before the last saved transaction of {{account}} ({{date}})."
+    },
+    "batch": {
+      "title": "New batch",
+      "new": "New batch",
+      "clear": "Clear",
+      "clearConfirm": "Clear the batch? Every captured transaction will be lost.",
+      "review": "Review",
+      "baseChanged": "The base balances changed since the draft was captured ({{names}}); it was recalculated with the current balances.",
+      "understood": "Got it",
+      "empty": "Add transactions with the form. The draft is kept in this browser.",
+      "saved": "Batch saved with {{n}} transaction(s).",
+      "failedAt": "Transaction #{{n}} \"{{description}}\": {{message}}"
+    },
+    "review": {
+      "title": "Summary of movements",
+      "income": "Income",
+      "expense": "Expenses",
+      "net": "Net",
+      "count": "Transactions",
+      "pendingCount": "{{n}} pending",
+      "temporaryDisabled": "The temporary account {{name}} will be disabled by this batch.",
+      "temporaryDisabledOnApply": "The temporary account {{name}} will be disabled when its pending withdrawal is applied.",
+      "pendingWarning": "{{n}} transaction(s) will stay pending; they do not count in reports until applied.",
+      "scheduled": "Includes {{n}} scheduled transaction(s).",
+      "accounts": "Affected accounts",
+      "current": "Current balance",
+      "projected": "Projected balance",
+      "difference": "Difference",
+      "save": "Save batch"
+    },
+    "apply": {
+      "title": "Apply transaction",
+      "confirm": {
+        "EXPENSE": "Apply \"{{description}}\"? It will be charged to the origin account.",
+        "TRANSIT": "Apply \"{{description}}\"? It will be credited to the destination account."
+      },
+      "profitHint": "If the origin is a temporary account, it will be disabled.",
+      "action": "Apply",
+      "done": "Transaction applied."
     }
   }
 }

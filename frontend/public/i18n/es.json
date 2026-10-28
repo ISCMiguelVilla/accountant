@@ -12,7 +12,8 @@
     "admin": "Administración",
     "users": "Usuarios",
     "currencies": "Monedas",
-    "accounts": "Cuentas"
+    "accounts": "Cuentas",
+    "transactions": "Transacciones"
   },
   "layout": {
     "toggleMenu": "Mostrar menú",
@@ -39,7 +40,8 @@
     "delete": "Eliminar",
     "yes": "Sí",
     "no": "No",
-    "loading": "Cargando…"
+    "loading": "Cargando…",
+    "optional": "opcional"
   },
   "home": {
     "title": "Inicio",
@@ -135,6 +137,24 @@
       "ACTIVE": "Activa",
       "DISABLED": "Deshabilitada",
       "DELETED": "Eliminada"
+    },
+    "transactionType": {
+      "INCOME": "Ingreso",
+      "EXPENSE": "Gasto",
+      "TRANSFER": "Transferencia",
+      "INVEST": "Inversión",
+      "PROFIT": "Retiro de inversión",
+      "DIVIDEND": "Rendimiento",
+      "INTEREST": "Interés o cargo",
+      "BORROW": "Préstamo otorgado",
+      "COLLECTION": "Cobro de préstamo",
+      "DEBT": "Deuda",
+      "PAYMENT": "Pago de deuda"
+    },
+    "operationType": {
+      "ADDITION": "Ingreso",
+      "SUBTRACTION": "Gasto",
+      "NEUTER": "Movimiento interno"
     }
   },
   "validation": {
@@ -163,7 +183,17 @@
       "PositiveOrZero": "Debe ser mayor o igual a 0.",
       "Positive": "Debe ser mayor a 0.",
       "Digits": "Máximo 2 decimales.",
-      "TYPE_CHANGE_REQUIRES_ZERO_BALANCE": "Para cambiar a un tipo sin saldo, el saldo debe ser 0."
+      "TYPE_CHANGE_REQUIRES_ZERO_BALANCE": "Para cambiar a un tipo sin saldo, el saldo debe ser 0.",
+      "SAME_ACCOUNT": "El origen y el destino deben ser cuentas distintas.",
+      "ORIGIN_NOT_ALLOWED": "Esta cuenta no puede ser origen de este tipo de transacción.",
+      "DESTINATION_REQUIRED": "Este tipo de transacción requiere una cuenta destino.",
+      "DESTINATION_NOT_ALLOWED": "Esta cuenta no puede ser destino de este tipo de transacción.",
+      "FEE_NOT_ALLOWED": "Este tipo de transacción no admite comisión.",
+      "FEE_NOT_BELOW_AMOUNT": "La comisión debe ser menor que el monto.",
+      "PENDING_NOT_ALLOWED": "Este tipo de transacción no puede quedar pendiente.",
+      "ACCOUNT_NOT_FOUND": "La cuenta no existe o ya no está disponible.",
+      "INVALID_SCHEDULE": "La transacción programada no existe o no está activa.",
+      "SCHEDULE_MISMATCH": "La transacción no coincide con su programada (tipo, origen o destino)."
     },
     "min": "El valor mínimo es {{min}}."
   },
@@ -193,7 +223,6 @@
     "subAccounts": "Sub-cuentas",
     "noSubAccounts": "Esta cuenta no tiene sub-cuentas.",
     "lastTransactions": "Últimas transacciones",
-    "noTransactionsYet": "Aquí aparecerán las transacciones de esta cuenta.",
     "backToList": "Volver a cuentas",
     "credit": {
       "title": "Línea de crédito",
@@ -367,6 +396,108 @@
       "zoomOut": "Alejar",
       "rotateRight": "Girar a la derecha",
       "rotateLeft": "Girar a la izquierda"
+    }
+  },
+  "transactions": {
+    "title": "Transacciones",
+    "search": "Buscar por descripción",
+    "type": "Tipo",
+    "origin": "Origen",
+    "destination": "Destino",
+    "account": "Cuenta",
+    "amount": "Monto",
+    "fee": "Comisión",
+    "operationDate": "Fecha",
+    "description": "Descripción",
+    "operationType": "Tipo de operación",
+    "applied": "Aplicada",
+    "appliedFilter": "Aplicación",
+    "appliedOnly": "Aplicadas",
+    "pendingOnly": "Pendientes",
+    "dateFrom": "Desde",
+    "dateTo": "Hasta",
+    "batchFilter": "Lote guardado",
+    "counterparty": "Contraparte",
+    "balanceBeforeAfter": "Saldo antes → después",
+    "viewAll": "Ver todas",
+    "noneForAccount": "Esta cuenta aún no tiene transacciones.",
+    "selectAccount": "Selecciona una cuenta",
+    "useTotal": "Usar saldo total",
+    "feeDisabled": "Este tipo de transacción no admite comisión.",
+    "minDate": "No puede ser anterior al {{date}} (última transacción guardada).",
+    "pending": "Pendiente",
+    "pendingHelp": {
+      "EXPENSE": "El cargo a la cuenta origen se reflejará al aplicarla.",
+      "TRANSFER": "El origen se descuenta ya; el destino se abona al aplicarla.",
+      "INVEST": "El origen se descuenta ya; el destino se abona al aplicarla.",
+      "PROFIT": "El origen se descuenta ya; el destino se abona al aplicarla."
+    },
+    "pendingPreview": "Pendiente: este saldo cambiará al aplicarla.",
+    "pendingTag": "Pendiente",
+    "availableCreditAfter": "Crédito disponible después",
+    "breaksLater": "Con este cambio la transacción #{{n}} deja de ser válida: {{message}}",
+    "add": "Agregar",
+    "update": "Actualizar",
+    "rejected": "Cambio rechazado",
+    "failedTransaction": "\"{{description}}\": {{message}}",
+    "typeHelp": {
+      "INCOME": "Sueldo o cobro: de un proveedor de ingresos a un almacén.",
+      "EXPENSE": "Consumo con dinero propio o con tarjeta.",
+      "TRANSFER": "Mover dinero entre tus almacenes.",
+      "INVEST": "Meter dinero a una inversión o negocio.",
+      "PROFIT": "Sacar los recursos de una inversión o negocio.",
+      "DIVIDEND": "Rendimiento que te da una inversión.",
+      "INTEREST": "Interés, comisión o cargo en contra.",
+      "BORROW": "Prestarle dinero a alguien.",
+      "COLLECTION": "Cobrar un préstamo que hiciste.",
+      "DEBT": "Préstamo en efectivo o compra a crédito.",
+      "PAYMENT": "Pagar una tarjeta o préstamo."
+    },
+    "errors": {
+      "INSUFFICIENT_FUNDS": "Fondos insuficientes en {{account}}: disponible {{available}}, se requiere {{required}}.",
+      "CREDIT_LIMIT_EXCEEDED": "Se excede el límite de crédito de {{account}}: disponible {{available}}, se requiere {{required}}.",
+      "SENSELESS_TRANSACTION": "El monto excede el saldo de {{account}} ({{available}}).",
+      "ACCOUNT_DISABLED": "La cuenta {{account}} está deshabilitada.",
+      "DATE_BEFORE_LAST_TRANSACTION": "La fecha es anterior a la última transacción guardada de {{account}} ({{date}})."
+    },
+    "batch": {
+      "title": "Nuevo lote",
+      "new": "Nuevo lote",
+      "clear": "Vaciar",
+      "clearConfirm": "¿Vaciar el lote? Se perderán todas las transacciones capturadas.",
+      "review": "Revisar",
+      "baseChanged": "Los saldos base cambiaron desde que se capturó el borrador ({{names}}); se recalculó con los saldos actuales.",
+      "understood": "Entendido",
+      "empty": "Agrega transacciones con el formulario. El borrador se guarda en este navegador.",
+      "saved": "Lote guardado con {{n}} transacción(es).",
+      "failedAt": "Transacción #{{n}} \"{{description}}\": {{message}}"
+    },
+    "review": {
+      "title": "Resumen de movimientos",
+      "income": "Ingresos",
+      "expense": "Gastos",
+      "net": "Neto",
+      "count": "Transacciones",
+      "pendingCount": "{{n}} pendientes",
+      "temporaryDisabled": "La cuenta temporal {{name}} se deshabilitará con este lote.",
+      "temporaryDisabledOnApply": "La cuenta temporal {{name}} se deshabilitará cuando se aplique su retiro pendiente.",
+      "pendingWarning": "{{n}} transacción(es) quedarán pendientes; no cuentan en reportes hasta aplicarlas.",
+      "scheduled": "Incluye {{n}} transacción(es) programada(s).",
+      "accounts": "Cuentas afectadas",
+      "current": "Saldo actual",
+      "projected": "Saldo proyectado",
+      "difference": "Diferencia",
+      "save": "Guardar lote"
+    },
+    "apply": {
+      "title": "Aplicar transacción",
+      "confirm": {
+        "EXPENSE": "¿Aplicar \"{{description}}\"? Se cargará a la cuenta origen.",
+        "TRANSIT": "¿Aplicar \"{{description}}\"? Se abonará a la cuenta destino."
+      },
+      "profitHint": "Si el origen es una cuenta temporal, se deshabilitará.",
+      "action": "Aplicar",
+      "done": "Transacción aplicada."
     }
   }
 }
