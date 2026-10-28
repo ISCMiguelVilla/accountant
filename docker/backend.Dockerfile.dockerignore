@@ -1,0 +1,6 @@
+# Only the pom and the sources go into the image build.
+*
+!pom.xml
+!src/
+# Local overrides may hold real passwords: never in an image.
+application-local.yml

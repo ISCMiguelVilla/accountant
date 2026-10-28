@@ -2,7 +2,7 @@
 
 Aplicación web de **finanzas personales**, multiusuario y de uso doméstico, pensada para ejecutarse **en local** (en tu propio equipo o en tu red de casa). Permite registrar cuentas (bancos, efectivo, tarjetas de crédito, inversiones, préstamos…) y los movimientos de dinero entre ellas, y a partir de eso muestra cuánto tienes, cuánto debes, cuánto ganas, cuánto gastas y si vas cumpliendo tu meta de ahorro anual.
 
-> **Estado del proyecto:** en construcción. Este README describe el sistema completo tal como está especificado en [`docs/PROMPT-accountant-v2.md`](docs/PROMPT-accountant-v2.md), que es la especificación de referencia. La implementación avanza por fases (ver [Hoja de ruta](#14-hoja-de-ruta-fases)). **Fases completadas:** 1 (andamiaje: perfiles, Flyway V1, errores `ProblemDetail`, tema PrimeNG, i18n ES/EN, layout, Spotless/ESLint/Prettier) 2 (autenticación JWT con único administrador, administración de usuarios y monedas, paginado/filtros/orden genéricos y tablas sincronizadas con la URL) 3 (cuentas con jerarquía y validación de ciclos, edición manual de saldo, borrado lógico, líneas de crédito con fechas de corte/pago calculadas por cron y job diario, semilla de desarrollo) y 4 (motor de transacciones del backend: reglas, lote atómico con bloqueo pesimista, transacciones pendientes con su aplicación posterior, cuentas temporales y tipo de operación para reportes, probado con los casos compartidos de `docs/transaction-cases.json`; el detalle está en [`docs/business-rules.md`](docs/business-rules.md)) y 5 (editor de lotes: motor TypeScript probado con los mismos casos compartidos y con la matriz de [`docs/transaction-rules.json`](docs/transaction-rules.json), borrador en el navegador con detección de saldos base cambiados, vista previa de saldos, resumen de movimientos y guardado atómico; listado de transacciones con filtros y acción "Aplicar"; últimas transacciones en el detalle de cuenta) y 6 (transacciones programadas: listado con filtros, formulario con las mismas reglas que una transacción y verificador de *cron*, activar/desactivar, saltar ejecución, borrado lógico y panel de programadas aplicables en el editor de lotes, que precarga el formulario y avanza la programada al guardar). Fase 7 (home, pestaña Resumen: cuentas en uso con totales de disponible y deuda, estado de resultados por año/mes/semana/día con vista de tabla, gastos del mes por concepto con "Comisiones", árbol de cuentas con porcentajes, y metas anuales con su progreso mensual; reportes calculados en Postgres por `applied_at`). En el árbol las cuentas DEBTOR no se suman al dinero disponible: su deuda se muestra aparte junto con el patrimonio neto. Fase 8 (home, pestaña Calendario: mes con semana desde el lunes, ingresos y gastos aplicados por día, fechas de corte y pago de cada tarjeta con su deuda, ejecuciones futuras de las programadas activas y panel de detalle del día con enlace al listado filtrado por fecha de aplicación). Docker y la verificación de punta a punta llegan en la fase 9.
+> **Estado del proyecto:** en construcción. Este README describe el sistema completo tal como está especificado en [`docs/PROMPT-accountant-v2.md`](docs/PROMPT-accountant-v2.md), que es la especificación de referencia. La implementación avanza por fases (ver [Hoja de ruta](#14-hoja-de-ruta-fases)). **Fases completadas:** 1 (andamiaje: perfiles, Flyway V1, errores `ProblemDetail`, tema PrimeNG, i18n ES/EN, layout, Spotless/ESLint/Prettier) 2 (autenticación JWT con único administrador, administración de usuarios y monedas, paginado/filtros/orden genéricos y tablas sincronizadas con la URL) 3 (cuentas con jerarquía y validación de ciclos, edición manual de saldo, borrado lógico, líneas de crédito con fechas de corte/pago calculadas por cron y job diario, semilla de desarrollo) y 4 (motor de transacciones del backend: reglas, lote atómico con bloqueo pesimista, transacciones pendientes con su aplicación posterior, cuentas temporales y tipo de operación para reportes, probado con los casos compartidos de `docs/transaction-cases.json`; el detalle está en [`docs/business-rules.md`](docs/business-rules.md)) y 5 (editor de lotes: motor TypeScript probado con los mismos casos compartidos y con la matriz de [`docs/transaction-rules.json`](docs/transaction-rules.json), borrador en el navegador con detección de saldos base cambiados, vista previa de saldos, resumen de movimientos y guardado atómico; listado de transacciones con filtros y acción "Aplicar"; últimas transacciones en el detalle de cuenta) y 6 (transacciones programadas: listado con filtros, formulario con las mismas reglas que una transacción y verificador de *cron*, activar/desactivar, saltar ejecución, borrado lógico y panel de programadas aplicables en el editor de lotes, que precarga el formulario y avanza la programada al guardar). Fase 7 (home, pestaña Resumen: cuentas en uso con totales de disponible y deuda, estado de resultados por año/mes/semana/día con vista de tabla, gastos del mes por concepto con "Comisiones", árbol de cuentas con porcentajes, y metas anuales con su progreso mensual; reportes calculados en Postgres por `applied_at`). En el árbol las cuentas DEBTOR no se suman al dinero disponible: su deuda se muestra aparte junto con el patrimonio neto. Fase 8 (home, pestaña Calendario: mes con semana desde el lunes, ingresos y gastos aplicados por día, fechas de corte y pago de cada tarjeta con su deuda, ejecuciones futuras de las programadas activas y panel de detalle del día con enlace al listado filtrado por fecha de aplicación). Fase 9 (Docker: imágenes multi-stage de backend y frontend, NGINX como único puerto expuesto con proxy a `/accountant/`, `docker-compose.yml` y `.env.example`).
 
 ---
 
@@ -87,13 +87,14 @@ accountant/
 │       ├── core/             # auth, layout, manejo de errores, i18n, tema
 │       ├── shared/           # componentes, enums, modelos, pipes, utilidades de dinero
 │       └── features/         # auth, home, accounts, transactions, schedules, admin
-├── docker/                   # Dockerfiles y configuración de NGINX (fase 9)
+├── docker/                   # Dockerfiles (+ .dockerignore) y configuración de NGINX
 ├── docs/
 │   ├── PROMPT-accountant-v2.md   # especificación completa del sistema
 │   ├── business-rules.md         # reglas del motor de transacciones (prosa + tablas)
-│   └── transaction-cases.json    # casos de prueba compartidos back/front
-├── docker-compose.yml        # (fase 9)
-├── .env.example              # (fase 9)
+│   ├── transaction-cases.json    # casos de prueba compartidos back/front
+│   └── transaction-rules.json    # copia de GET /transactions/rules para los tests del front
+├── docker-compose.yml        # NGINX + backend (perfil prod)
+├── .env.example              # variables de docker compose (sin secretos reales)
 ├── .gitignore                # único .gitignore para todo el monorepo
 └── README.md
 ```
@@ -205,14 +206,33 @@ npm run format
 
 ### 6.4 "Producción" local con Docker
 
-```bash
-cp .env.example .env
-docker compose up -d --build
-```
+1. Crea la base de datos en el PostgreSQL del equipo (Flyway crea las tablas al arrancar; en `prod` no se carga la semilla de desarrollo, el primer usuario que se registre será el administrador):
 
-- `frontend`: imagen multi-stage (node → `ng build` → `nginx:alpine`). NGINX sirve el SPA y redirige `/accountant/` al backend.
-- `backend`: imagen multi-stage (`maven:3-eclipse-temurin-21` → `eclipse-temurin:21-jre`) con perfil `prod`. **No expone puertos al host**.
+   ```bash
+   psql -h localhost -U postgres -c "CREATE DATABASE accountant"
+   ```
+
+2. Crea tu `.env` a partir del ejemplo y llena `DB_USERNAME`, `DB_PASSWORD` y un `JWT_SECRET` propio (base64 de al menos 256 bits, p. ej. `openssl rand -base64 32`). El `.env` no se versiona.
+
+   ```bash
+   cp .env.example .env
+   ```
+
+3. Construye y levanta (requiere Docker Desktop corriendo):
+
+   ```bash
+   docker compose up -d --build
+   ```
+
+4. Abre `http://localhost:8085` (o el `APP_PORT` que definiste). Logs: `docker compose logs -f backend`; detener: `docker compose down`.
+
+Archivos: [`docker-compose.yml`](docker-compose.yml), [`docker/backend.Dockerfile`](docker/backend.Dockerfile), [`docker/frontend.Dockerfile`](docker/frontend.Dockerfile), [`docker/nginx/default.conf`](docker/nginx/default.conf) y [`.env.example`](.env.example).
+
+- `frontend`: imagen multi-stage (`node:22-alpine` → `ng build` → `nginx:alpine`). NGINX sirve el SPA (con *fallback* a `index.html`), cachea los archivos con hash, no cachea `index.html` ni las traducciones, agrega cabeceras de seguridad y redirige `/accountant/` al backend. La configuración de NGINX va dentro de la imagen.
+- `backend`: imagen multi-stage (`maven:3-eclipse-temurin-21` → `eclipse-temurin:21-jre`) con perfil `prod`, usuario sin privilegios y zona horaria `America/Mexico_City`. **No expone puertos al host**. Los tests y Spotless corren en el build normal (`./mvnw verify`), no dentro de la imagen.
 - **Solo NGINX expone puerto**: `http://localhost:${APP_PORT:-8085}`.
+- En `prod`, Swagger está deshabilitado y no hay CORS (mismo origen vía NGINX); el *health check* queda en `/accountant/actuator/health`.
+- Los `.dockerignore` (junto a cada Dockerfile) dejan fuera `application-local.yml`, `node_modules` y los builds locales.
 - El backend se conecta al PostgreSQL del equipo vía `host.docker.internal`. Para permitirlo:
   - `postgresql.conf`: `listen_addresses = '*'` (o la IP de la interfaz de Docker).
   - `pg_hba.conf`: agregar una línea para la red de Docker, p. ej. `host accountant all 172.16.0.0/12 scram-sha-256`.

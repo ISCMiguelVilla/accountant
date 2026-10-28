@@ -1,0 +1,8 @@
+# Context is the repository root: only the frontend sources and the NGINX config.
+*
+!frontend/
+!docker/nginx/
+frontend/node_modules
+frontend/dist
+frontend/.angular
+frontend/coverage
