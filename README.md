@@ -233,7 +233,7 @@ Archivos: [`docker-compose.yml`](docker-compose.yml), [`docker/backend.Dockerfil
 - **Solo NGINX expone puerto**: `http://localhost:${APP_PORT:-8085}`.
 - En `prod`, Swagger está deshabilitado y no hay CORS (mismo origen vía NGINX); el *health check* queda en `/accountant/actuator/health`.
 - Los `.dockerignore` (junto a cada Dockerfile) dejan fuera `application-local.yml`, `node_modules` y los builds locales.
-- El backend se conecta al PostgreSQL del equipo vía `host.docker.internal`. Para permitirlo:
+- El backend se conecta al PostgreSQL del equipo vía `host.docker.internal`. Con **Docker Desktop** (Windows/macOS) las conexiones llegan como locales y basta con la configuración por defecto (`127.0.0.1/32` en `pg_hba.conf`); comprobado en Windows. En Docker sobre Linux hay que permitir la red de Docker:
   - `postgresql.conf`: `listen_addresses = '*'` (o la IP de la interfaz de Docker).
   - `pg_hba.conf`: agregar una línea para la red de Docker, p. ej. `host accountant all 172.16.0.0/12 scram-sha-256`.
   - Reiniciar el servicio de PostgreSQL.
