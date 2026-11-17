@@ -141,7 +141,7 @@ interface Review {
             <h3 class="mt-0 mb-2 text-base font-semibold">
               {{ 'transactions.review.accounts' | translate }}
             </h3>
-            <p-table [value]="review.accounts" [tableStyle]="{ 'min-width': '40rem' }">
+            <p-table size="small" [value]="review.accounts" [tableStyle]="{ 'min-width': '40rem' }">
               <ng-template #header>
                 <tr>
                   <th>{{ 'transactions.account' | translate }}</th>
@@ -188,6 +188,7 @@ interface Review {
 
       <ng-template #footer>
         <p-button
+          size="small"
           [label]="'common.cancel' | translate"
           severity="secondary"
           [text]="true"
@@ -195,6 +196,7 @@ interface Review {
           (onClick)="visible.set(false)"
         />
         <p-button
+          size="small"
           icon="pi pi-save"
           [label]="'transactions.review.save' | translate"
           [loading]="saving()"

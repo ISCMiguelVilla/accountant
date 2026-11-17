@@ -72,6 +72,7 @@ interface BatchRow {
       <h1 class="m-0 text-2xl font-semibold">{{ 'transactions.batch.title' | translate }}</h1>
       <div class="flex gap-2">
         <p-button
+          size="small"
           icon="pi pi-trash"
           [label]="'transactions.batch.clear' | translate"
           severity="secondary"
@@ -80,6 +81,7 @@ interface BatchRow {
           (onClick)="confirmClear()"
         />
         <p-button
+          size="small"
           icon="pi pi-list-check"
           [label]="'transactions.batch.review' | translate"
           [disabled]="!store.transactions().length || !store.projection().ok"
@@ -103,6 +105,7 @@ interface BatchRow {
               [text]="'transactions.batch.baseChanged' | translate: { names }"
             />
             <p-button
+              size="small"
               [label]="'transactions.batch.understood' | translate"
               [text]="true"
               (onClick)="store.dismissBaseChange()"
@@ -157,6 +160,7 @@ interface BatchRow {
         <app-transaction-form [editing]="editing()" (done)="editing.set(null)" />
 
         <p-table
+          size="small"
           [value]="rows()"
           dataKey="item.uuid"
           [tableStyle]="{ 'min-width': '72rem' }"
@@ -249,6 +253,7 @@ interface BatchRow {
               </td>
               <td class="whitespace-nowrap text-right">
                 <p-button
+                  size="small"
                   icon="pi pi-pencil"
                   [text]="true"
                   [rounded]="true"
@@ -258,6 +263,7 @@ interface BatchRow {
                   (onClick)="editing.set(row.item)"
                 />
                 <p-button
+                  size="small"
                   icon="pi pi-trash"
                   [text]="true"
                   [rounded]="true"
@@ -389,10 +395,12 @@ export class BatchEditorPage {
       message: this.translate.instant('transactions.batch.clearConfirm'),
       icon: 'pi pi-exclamation-triangle',
       acceptButtonProps: {
+        size: 'small',
         label: this.translate.instant('transactions.batch.clear'),
         severity: 'danger',
       },
       rejectButtonProps: {
+        size: 'small',
         label: this.translate.instant('common.cancel'),
         severity: 'secondary',
         text: true,

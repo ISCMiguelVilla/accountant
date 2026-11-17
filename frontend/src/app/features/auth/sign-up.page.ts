@@ -56,18 +56,25 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
         }
         <div class="flex flex-col gap-2">
           <label for="name">{{ 'auth.name' | translate }}</label>
-          <input pInputText id="name" formControlName="name" autocomplete="name" />
+          <input pInputText pSize="small" id="name" formControlName="name" autocomplete="name" />
           <app-field-error [control]="form.controls.name" />
         </div>
         <div class="flex flex-col gap-2">
           <label for="username">{{ 'auth.username' | translate }}</label>
-          <input pInputText id="username" formControlName="username" autocomplete="username" />
+          <input
+            pInputText
+            pSize="small"
+            id="username"
+            formControlName="username"
+            autocomplete="username"
+          />
           <small class="text-muted-color">{{ 'auth.usernameHint' | translate }}</small>
           <app-field-error [control]="form.controls.username" />
         </div>
         <div class="flex flex-col gap-2">
           <label for="password">{{ 'auth.password' | translate }}</label>
           <p-password
+            size="small"
             inputId="password"
             formControlName="password"
             [toggleMask]="true"
@@ -80,6 +87,7 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
         <div class="flex flex-col gap-2">
           <label for="confirmPassword">{{ 'auth.confirmPassword' | translate }}</label>
           <p-password
+            size="small"
             inputId="confirmPassword"
             formControlName="confirmPassword"
             [feedback]="false"
@@ -91,6 +99,7 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
           <app-field-error [control]="form.controls.confirmPassword" />
         </div>
         <p-button
+          size="small"
           type="submit"
           [label]="'auth.signUp.action' | translate"
           icon="pi pi-user-plus"

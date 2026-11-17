@@ -53,6 +53,7 @@ export const ACCOUNT_ICONS = [
   ],
   template: `
     <p-select
+      size="small"
       [options]="icons"
       [ngModel]="value()"
       (ngModelChange)="change($event)"

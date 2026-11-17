@@ -17,7 +17,7 @@
     "schedules": "Scheduled"
   },
   "layout": {
-    "toggleMenu": "Show menu",
+    "toggleMenu": "Show or hide menu",
     "language": "Language",
     "darkMode": "Dark mode",
     "lightMode": "Light mode",
@@ -109,7 +109,10 @@
         "SUCCESS": "On track",
         "WARNING": "Below",
         "DANGER": "At risk"
-      }
+      },
+      "delete": "Delete goal",
+      "deleteConfirm": "Delete the {{year}} goal? Goals of years that already ended cannot be deleted.",
+      "empty": "No goals registered yet. Use \"Set goal\" to start tracking your progress."
     },
     "calendar": {
       "previous": "Previous month",
@@ -272,7 +275,8 @@
       "PENDING_NOT_ALLOWED": "This transaction type cannot be pending.",
       "ACCOUNT_NOT_FOUND": "The account does not exist or is no longer available.",
       "INVALID_SCHEDULE": "The scheduled transaction does not exist or is not active.",
-      "SCHEDULE_MISMATCH": "The transaction does not match its schedule (type, origin or destination)."
+      "SCHEDULE_MISMATCH": "The transaction does not match its schedule (type, origin or destination).",
+      "GOAL_YEAR_CLOSED": "The goal of a year that already ended cannot be deleted."
     },
     "min": "The minimum value is {{min}}."
   },
@@ -323,7 +327,12 @@
       "INVESTMENT": "Investment: bonds, funds, deposits.",
       "CREDITOR": "Money you lent (you are owed).",
       "DEBTOR": "Money you owe: credit card, loan."
-    }
+    },
+    "goToParent": "Go to {{name}}",
+    "parentHelp": "Only accounts that accept this type as a sub-account and that are not sub-accounts of this same account are listed (this prevents cycles).",
+    "colorHex": "Hex color",
+    "colorInvalid": "Type a 6-digit hex color, e.g. #1E88E5.",
+    "addSubAccount": "Add sub-account"
   },
   "cron": {
     "mode": {

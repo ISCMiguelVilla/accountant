@@ -52,12 +52,13 @@ import { UserAdminApiService } from './user-admin-api.service';
         }
         <div class="flex flex-col gap-2">
           <label for="user-name">{{ 'common.name' | translate }}</label>
-          <input pInputText id="user-name" formControlName="name" />
+          <input pInputText pSize="small" id="user-name" formControlName="name" />
           <app-field-error [control]="form.controls.name" />
         </div>
         <div class="flex flex-col gap-2">
           <span>{{ 'common.status' | translate }}</span>
           <p-selectbutton
+            size="small"
             [options]="statusOptions"
             formControlName="status"
             [allowEmpty]="false"
@@ -73,12 +74,18 @@ import { UserAdminApiService } from './user-admin-api.service';
         </div>
         <div class="flex justify-end gap-2">
           <p-button
+            size="small"
             [label]="'common.cancel' | translate"
             severity="secondary"
             [text]="true"
             (onClick)="closed.emit()"
           />
-          <p-button type="submit" [label]="'common.save' | translate" [loading]="saving()" />
+          <p-button
+            size="small"
+            type="submit"
+            [label]="'common.save' | translate"
+            [loading]="saving()"
+          />
         </div>
       </form>
     </p-dialog>

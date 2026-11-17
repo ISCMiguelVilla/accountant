@@ -35,7 +35,12 @@ import { effectOn, isPendingOn } from './transaction-effect';
   template: `
     @if (data.value()?.content; as transactions) {
       @if (transactions.length) {
-        <p-table [value]="transactions" dataKey="id" [tableStyle]="{ 'min-width': '52rem' }">
+        <p-table
+          size="small"
+          [value]="transactions"
+          dataKey="id"
+          [tableStyle]="{ 'min-width': '52rem' }"
+        >
           <ng-template #header>
             <tr>
               <th>{{ 'transactions.operationDate' | translate }}</th>

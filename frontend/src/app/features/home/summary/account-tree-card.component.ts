@@ -41,7 +41,7 @@ import { DashboardApiService } from '../dashboard-api.service';
           </div>
         </dl>
         @if (summary.nodes.length) {
-          <ul class="m-0 flex list-none flex-col gap-3 p-0">
+          <ul class="m-0 flex list-none flex-col gap-1 p-0">
             @for (node of summary.nodes; track node.id) {
               <ng-container *ngTemplateOutlet="item; context: { $implicit: node, depth: 0 }" />
             }
@@ -54,7 +54,10 @@ import { DashboardApiService } from '../dashboard-api.service';
 
     <ng-template #item let-node let-depth="depth">
       <li class="flex flex-col gap-1" [style.padding-left.rem]="depth * 1.25">
-        <div class="flex items-center gap-2 text-sm">
+        <!-- PrimeNG content hover token: the same one its table rows use (Sub-cuentas). -->
+        <div
+          class="flex items-center gap-2 rounded-border px-2 py-1 text-sm hover:bg-(--p-content-hover-background)"
+        >
           <app-account-avatar [icon]="node.icon" [color]="node.color" [type]="node.type" />
           <a class="flex-1 truncate text-color" [routerLink]="['/accounts', node.id]">{{
             node.name
@@ -64,15 +67,8 @@ import { DashboardApiService } from '../dashboard-api.service';
           >
           <span class="w-28 text-right font-mono">{{ node.total | money }}</span>
         </div>
-        <div class="ml-10 h-1.5 overflow-hidden rounded-full bg-surface-200 dark:bg-surface-700">
-          <div
-            class="h-full rounded-full"
-            [style.width.%]="node.percentage"
-            [style.background-color]="node.color || 'var(--p-primary-color)'"
-          ></div>
-        </div>
         @if (node.children.length) {
-          <ul class="m-0 mt-2 flex list-none flex-col gap-3 p-0">
+          <ul class="m-0 flex list-none flex-col gap-1 p-0">
             @for (child of node.children; track child.id) {
               <ng-container
                 *ngTemplateOutlet="item; context: { $implicit: child, depth: depth + 1 }"

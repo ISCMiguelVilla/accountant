@@ -17,7 +17,7 @@
     "schedules": "Programadas"
   },
   "layout": {
-    "toggleMenu": "Mostrar menú",
+    "toggleMenu": "Mostrar u ocultar menú",
     "language": "Idioma",
     "darkMode": "Modo oscuro",
     "lightMode": "Modo claro",
@@ -109,7 +109,10 @@
         "SUCCESS": "En meta",
         "WARNING": "Por debajo",
         "DANGER": "En riesgo"
-      }
+      },
+      "delete": "Eliminar meta",
+      "deleteConfirm": "¿Eliminar la meta de {{year}}? Las metas de años que ya terminaron no se pueden eliminar.",
+      "empty": "Aún no hay metas registradas. Usa \"Definir meta\" para empezar a ver tu progreso."
     },
     "calendar": {
       "previous": "Mes anterior",
@@ -272,7 +275,8 @@
       "PENDING_NOT_ALLOWED": "Este tipo de transacción no puede quedar pendiente.",
       "ACCOUNT_NOT_FOUND": "La cuenta no existe o ya no está disponible.",
       "INVALID_SCHEDULE": "La transacción programada no existe o no está activa.",
-      "SCHEDULE_MISMATCH": "La transacción no coincide con su programada (tipo, origen o destino)."
+      "SCHEDULE_MISMATCH": "La transacción no coincide con su programada (tipo, origen o destino).",
+      "GOAL_YEAR_CLOSED": "La meta de un año que ya terminó no se puede eliminar."
     },
     "min": "El valor mínimo es {{min}}."
   },
@@ -323,7 +327,12 @@
       "INVESTMENT": "Inversión: CETES, fondos, plazo fijo.",
       "CREDITOR": "Dinero que prestaste (te deben).",
       "DEBTOR": "Dinero que debes: tarjeta de crédito, préstamo."
-    }
+    },
+    "goToParent": "Ir a {{name}}",
+    "parentHelp": "Solo aparecen las cuentas que aceptan este tipo como sub-cuenta y que no son sub-cuentas de esta misma cuenta (así se evitan ciclos).",
+    "colorHex": "Color en hexadecimal",
+    "colorInvalid": "Escribe un color hexadecimal de 6 dígitos, p. ej. #1E88E5.",
+    "addSubAccount": "Agregar sub-cuenta"
   },
   "cron": {
     "mode": {

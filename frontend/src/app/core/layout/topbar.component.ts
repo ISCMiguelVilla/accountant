@@ -4,6 +4,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { MenuItem } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { MenuModule } from 'primeng/menu';
+import { TooltipModule } from 'primeng/tooltip';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { AuthService } from '../auth/auth.service';
 import { LanguageSwitcherComponent } from './language-switcher.component';
@@ -16,6 +17,7 @@ import { ThemeToggleComponent } from './theme-toggle.component';
     TranslatePipe,
     ButtonModule,
     MenuModule,
+    TooltipModule,
     LanguageSwitcherComponent,
     ThemeToggleComponent,
   ],
@@ -24,25 +26,28 @@ import { ThemeToggleComponent } from './theme-toggle.component';
     <header
       class="flex h-16 items-center gap-3 border-b border-surface bg-surface-0 px-4 dark:bg-surface-900"
     >
+      <a routerLink="/home" class="flex items-center gap-2 text-color no-underline">
+        <i class="pi pi-wallet text-xl"></i>
+        <span class="text-lg font-semibold">{{ 'app.name' | translate }}</span>
+      </a>
       <p-button
-        class="lg:hidden"
+        size="small"
         icon="pi pi-bars"
         [text]="true"
         [rounded]="true"
         severity="secondary"
         [ariaLabel]="'layout.toggleMenu' | translate"
+        [pTooltip]="'layout.toggleMenu' | translate"
+        tooltipPosition="bottom"
         (onClick)="toggleMenu.emit()"
       />
-      <a routerLink="/home" class="flex items-center gap-2 text-color no-underline">
-        <i class="pi pi-wallet text-xl"></i>
-        <span class="text-lg font-semibold">{{ 'app.name' | translate }}</span>
-      </a>
 
       <div class="ml-auto flex items-center gap-2">
         <app-language-switcher />
         <app-theme-toggle />
         @if (auth.user(); as user) {
           <p-button
+            size="small"
             icon="pi pi-user"
             [label]="user.name"
             [text]="true"
@@ -52,6 +57,7 @@ import { ThemeToggleComponent } from './theme-toggle.component';
             (onClick)="menu.toggle($event)"
           />
           <p-button
+            size="small"
             class="sm:hidden"
             icon="pi pi-user"
             [text]="true"

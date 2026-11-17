@@ -47,6 +47,7 @@ import { UserEditDialogComponent } from './user-edit-dialog.component';
         (changed)="table.setFilter('name', $event)"
       />
       <p-multiselect
+        size="small"
         [options]="statusOptions"
         [ngModel]="table.filter('status') ?? []"
         (ngModelChange)="table.setFilter('status', $event)"
@@ -60,6 +61,7 @@ import { UserEditDialogComponent } from './user-edit-dialog.component';
         </ng-template>
       </p-multiselect>
       <p-multiselect
+        size="small"
         [options]="roleOptions"
         [ngModel]="table.filter('role') ?? []"
         (ngModelChange)="table.setFilter('role', $event)"
@@ -75,6 +77,7 @@ import { UserEditDialogComponent } from './user-edit-dialog.component';
     </app-table-filter-bar>
 
     <p-table
+      size="small"
       [value]="users()"
       [lazy]="true"
       [loading]="data.isLoading()"
@@ -128,6 +131,7 @@ import { UserEditDialogComponent } from './user-edit-dialog.component';
           <td>{{ user.createdAt | date: 'medium' : undefined : language.locale() }}</td>
           <td>
             <p-button
+              size="small"
               icon="pi pi-pencil"
               [text]="true"
               [rounded]="true"

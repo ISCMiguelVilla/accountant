@@ -74,7 +74,13 @@ const DEFAULT_CRON = '0 0 0 1 * *';
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div class="flex flex-col gap-2">
             <label for="type">{{ 'transactions.type' | translate }}</label>
-            <p-select inputId="type" formControlName="type" [options]="types" styleClass="w-full">
+            <p-select
+              size="small"
+              inputId="type"
+              formControlName="type"
+              [options]="types"
+              styleClass="w-full"
+            >
               <ng-template #selectedItem let-type>
                 <i [class]="type | transactionTypeIcon" class="mr-2"></i
                 >{{ 'enums.transactionType.' + type | translate }}
@@ -88,13 +94,14 @@ const DEFAULT_CRON = '0 0 0 1 * *';
 
           <div class="flex flex-col gap-2">
             <label for="description">{{ 'transactions.description' | translate }}</label>
-            <input pInputText id="description" formControlName="description" />
+            <input pInputText pSize="small" id="description" formControlName="description" />
             <app-field-error [control]="form.controls.description" />
           </div>
 
           <div class="flex flex-col gap-2">
             <label for="origin">{{ 'transactions.origin' | translate }}</label>
             <p-select
+              size="small"
               inputId="origin"
               formControlName="originAccountId"
               [options]="originOptions()"
@@ -127,6 +134,7 @@ const DEFAULT_CRON = '0 0 0 1 * *';
                 }
               </label>
               <p-select
+                size="small"
                 inputId="destination"
                 formControlName="destinationAccountId"
                 [options]="destinationOptions()"
@@ -155,6 +163,7 @@ const DEFAULT_CRON = '0 0 0 1 * *';
           <div class="flex flex-col gap-2">
             <label for="amount">{{ 'transactions.amount' | translate }}</label>
             <p-inputnumber
+              size="small"
               inputId="amount"
               formControlName="amount"
               mode="decimal"
@@ -170,6 +179,7 @@ const DEFAULT_CRON = '0 0 0 1 * *';
           <div class="flex flex-col gap-2">
             <label for="fee">{{ 'transactions.fee' | translate }}</label>
             <p-inputnumber
+              size="small"
               inputId="fee"
               formControlName="fee"
               mode="decimal"
@@ -198,6 +208,7 @@ const DEFAULT_CRON = '0 0 0 1 * *';
           <div class="flex flex-col gap-2">
             <label for="next">{{ 'schedules.nextExecution' | translate }}</label>
             <p-datepicker
+              size="small"
               inputId="next"
               formControlName="nextExecution"
               [showClear]="true"
@@ -212,12 +223,14 @@ const DEFAULT_CRON = '0 0 0 1 * *';
 
       <div class="flex justify-end gap-2">
         <p-button
+          size="small"
           [label]="'common.cancel' | translate"
           severity="secondary"
           [text]="true"
           routerLink="/schedules"
         />
         <p-button
+          size="small"
           type="submit"
           icon="pi pi-save"
           [label]="'common.save' | translate"

@@ -4,6 +4,7 @@ import { rxResource } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { format } from 'date-fns';
+import { ConfirmationService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { DialogModule } from 'primeng/dialog';
@@ -89,6 +90,19 @@ const ICONS: Record<ProgressStatus, string> = {
                 [pTooltip]="'home.goals.edit' | translate"
                 (onClick)="openDialog(year.year, year.target)"
               />
+              <!-- Goals of years that already ended are history: only current / future ones can be deleted. -->
+              @if (year.year >= currentYear) {
+                <p-button
+                  icon="pi pi-trash"
+                  [text]="true"
+                  [rounded]="true"
+                  size="small"
+                  severity="danger"
+                  [ariaLabel]="'home.goals.delete' | translate"
+                  [pTooltip]="'home.goals.delete' | translate"
+                  (onClick)="confirmDelete(year.year)"
+                />
+              }
             </div>
             @if (year.percentage !== null) {
               <div
@@ -127,6 +141,8 @@ const ICONS: Record<ProgressStatus, string> = {
               }
             </div>
           </div>
+        } @empty {
+          <p class="m-0 text-sm text-muted-color">{{ 'home.goals.empty' | translate }}</p>
         }
       </div>
     </p-card>
@@ -140,6 +156,7 @@ const ICONS: Record<ProgressStatus, string> = {
       <div class="flex flex-col gap-2">
         <label for="goal-target">{{ 'home.goals.target' | translate }}</label>
         <p-inputnumber
+          size="small"
           inputId="goal-target"
           [ngModel]="dialogTarget()"
           (ngModelChange)="dialogTarget.set($event)"
@@ -153,8 +170,9 @@ const ICONS: Record<ProgressStatus, string> = {
         <small class="text-muted-color">{{ 'home.goals.targetHelp' | translate }}</small>
       </div>
       <ng-template #footer>
-        @if (dialogHasGoal()) {
+        @if (dialogHasGoal() && dialogYear() >= currentYear) {
           <p-button
+            size="small"
             icon="pi pi-trash"
             severity="danger"
             [text]="true"
@@ -163,12 +181,14 @@ const ICONS: Record<ProgressStatus, string> = {
           />
         }
         <p-button
+          size="small"
           [label]="'common.cancel' | translate"
           severity="secondary"
           [text]="true"
           (onClick)="dialogVisible.set(false)"
         />
         <p-button
+          size="small"
           icon="pi pi-save"
           [label]="'common.save' | translate"
           [disabled]="!dialogTarget()"
@@ -182,6 +202,7 @@ export class GoalProgressCardComponent {
   private readonly api = inject(DashboardApiService);
   private readonly translate = inject(TranslateService);
   private readonly notifier = inject(ErrorNotifier);
+  private readonly confirmation = inject(ConfirmationService);
   protected readonly language = inject(LanguageService);
 
   protected readonly currentYear = new Date().getFullYear();
@@ -202,6 +223,29 @@ export class GoalProgressCardComponent {
     this.dialogTarget.set(current);
     this.dialogHasGoal.set(current !== null);
     this.dialogVisible.set(true);
+  }
+
+  protected confirmDelete(year: number): void {
+    this.confirmation.confirm({
+      header: this.translate.instant('home.goals.delete'),
+      message: this.translate.instant('home.goals.deleteConfirm', { year }),
+      icon: 'pi pi-exclamation-triangle',
+      acceptButtonProps: {
+        size: 'small',
+        label: this.translate.instant('common.delete'),
+        severity: 'danger',
+      },
+      rejectButtonProps: {
+        size: 'small',
+        label: this.translate.instant('common.cancel'),
+        severity: 'secondary',
+        text: true,
+      },
+      accept: () => {
+        this.dialogYear.set(year);
+        this.deleteGoal();
+      },
+    });
   }
 
   protected saveGoal(): void {

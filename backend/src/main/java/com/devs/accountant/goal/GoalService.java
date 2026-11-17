@@ -11,5 +11,6 @@ public interface GoalService {
     /** Creates or replaces the goal of the year. */
     GoalResponse save(int year, GoalRequest request);
 
+    /** Only the goal of the current or a future year; the goals of past years are kept. */
     void delete(int year);
 }

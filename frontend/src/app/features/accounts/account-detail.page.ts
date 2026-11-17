@@ -1,5 +1,12 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, input, numberAttribute } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  numberAttribute,
+} from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { HttpParams } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
@@ -14,6 +21,7 @@ import { of } from 'rxjs';
 import { ErrorNotifier } from '../../core/http/error-notifier.service';
 import { LanguageService } from '../../core/i18n/language.service';
 import { AccountAvatarComponent } from '../../shared/components/account-avatar.component';
+import { AccountType } from '../../shared/enums/account-type.enum';
 import { MoneyPipe } from '../../shared/money/money.pipe';
 import { AccountTypeSeverityPipe } from '../../shared/pipes/account-type.pipes';
 import { StatusSeverityPipe } from '../../shared/pipes/status-severity.pipe';
@@ -68,14 +76,26 @@ import { AccountApiService } from './account-api.service';
             }
           </div>
         </div>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
+          @if (account.parent; as parent) {
+            <p-button
+              size="small"
+              icon="pi pi-arrow-up"
+              severity="secondary"
+              [outlined]="true"
+              [label]="'accounts.goToParent' | translate: { name: parent.name }"
+              [routerLink]="['/accounts', parent.id]"
+            />
+          }
           <p-button
+            size="small"
             icon="pi pi-pencil"
             [label]="'common.edit' | translate"
             severity="secondary"
             [routerLink]="['/accounts', account.id, 'edit']"
           />
           <p-button
+            size="small"
             icon="pi pi-trash"
             [label]="'common.delete' | translate"
             severity="danger"
@@ -86,7 +106,8 @@ import { AccountApiService } from './account-api.service';
       </div>
 
       <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <p-card styleClass="lg:col-span-1">
+        <!-- Without a credit line the data card takes the whole row. -->
+        <p-card [styleClass]="account.credit ? 'lg:col-span-1' : 'lg:col-span-3'">
           <dl class="m-0 grid grid-cols-[auto_1fr] gap-x-4 gap-y-3">
             @if (account.balance !== null) {
               <dt class="text-muted-color">{{ 'accounts.balance' | translate }}</dt>
@@ -157,12 +178,38 @@ import { AccountApiService } from './account-api.service';
           </p-card>
         }
 
-        <p-card [header]="'accounts.subAccounts' | translate" styleClass="lg:col-span-3">
-          @if (children.value()?.content; as children) {
+        <p-card styleClass="lg:col-span-3">
+          <ng-template #title>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <span>{{ 'accounts.subAccounts' | translate }}</span>
+              <p-button
+                size="small"
+                icon="pi pi-plus"
+                [outlined]="true"
+                [label]="'accounts.addSubAccount' | translate"
+                [routerLink]="['/accounts/new']"
+                [queryParams]="{ parentId: account.id }"
+              />
+            </div>
+          </ng-template>
+          @if (sortedChildren(); as children) {
             @if (children.length) {
-              <p-table [value]="children" dataKey="id" [tableStyle]="{ 'min-width': '32rem' }">
+              <p-table
+                size="small"
+                [value]="children"
+                dataKey="id"
+                [rowHover]="true"
+                [tableStyle]="{ 'min-width': '32rem' }"
+              >
                 <ng-template #body let-child>
-                  <tr>
+                  <!-- No PrimeNG row-severity property exists: a disabled row gets a light red background utility. -->
+                  <tr
+                    class="cursor-pointer"
+                    [class.bg-red-500/10]="child.status === 'DISABLED'"
+                    tabindex="0"
+                    (click)="open(child.id)"
+                    (keydown.enter)="open(child.id)"
+                  >
                     <td class="w-12">
                       <app-account-avatar
                         [icon]="child.icon"
@@ -170,14 +217,20 @@ import { AccountApiService } from './account-api.service';
                         [type]="child.type"
                       />
                     </td>
+                    <td class="font-medium">{{ child.name }}</td>
                     <td>
-                      <a [routerLink]="['/accounts', child.id]">{{ child.name }}</a>
-                    </td>
-                    <td>
-                      <p-tag
-                        [value]="'enums.accountType.' + child.type | translate"
-                        [severity]="child.type | accountTypeSeverity"
-                      />
+                      <div class="flex flex-wrap gap-1">
+                        <p-tag
+                          [value]="'enums.accountType.' + child.type | translate"
+                          [severity]="child.type | accountTypeSeverity"
+                        />
+                        @if (child.status === 'DISABLED') {
+                          <p-tag
+                            severity="danger"
+                            [value]="'enums.accountStatus.DISABLED' | translate"
+                          />
+                        }
+                      </div>
                     </td>
                     <td class="text-right font-mono">
                       {{
@@ -228,6 +281,20 @@ export class AccountDetailPage {
         : of(null),
   });
 
+  /** Debts first (Por pagar), then receivables (Por cobrar), then the rest; by name inside each group. */
+  protected readonly sortedChildren = computed(() => {
+    const children = this.children.value()?.content;
+    if (!children) {
+      return null;
+    }
+    const rank = (type: AccountType) => (type === 'DEBTOR' ? 0 : type === 'CREDITOR' ? 1 : 2);
+    return [...children].sort((a, b) => rank(a.type) - rank(b.type));
+  });
+
+  protected open(id: number): void {
+    void this.router.navigate(['/accounts', id]);
+  }
+
   protected reload(): void {
     this.account.reload();
     this.children.reload();
@@ -242,8 +309,13 @@ export class AccountDetailPage {
       header: this.translate.instant('accounts.deleteTitle'),
       message: this.translate.instant('accounts.deleteConfirm', { name: account.name }),
       icon: 'pi pi-exclamation-triangle',
-      acceptButtonProps: { label: this.translate.instant('common.delete'), severity: 'danger' },
+      acceptButtonProps: {
+        size: 'small',
+        label: this.translate.instant('common.delete'),
+        severity: 'danger',
+      },
       rejectButtonProps: {
+        size: 'small',
         label: this.translate.instant('common.cancel'),
         severity: 'secondary',
         text: true,
@@ -251,7 +323,10 @@ export class AccountDetailPage {
       accept: () =>
         this.api.delete(account.id).subscribe(() => {
           this.notifier.success('accounts.deleted');
-          void this.router.navigate(['/accounts']);
+          // Back to the parent when there is one, otherwise to the list.
+          void this.router.navigate(
+            account.parent ? ['/accounts', account.parent.id] : ['/accounts'],
+          );
         }),
     });
   }

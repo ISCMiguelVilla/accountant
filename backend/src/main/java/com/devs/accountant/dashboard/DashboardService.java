@@ -15,8 +15,6 @@ import java.time.YearMonth;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -70,23 +68,27 @@ public class DashboardService {
         return new SummaryResponse(assets, debt, assets.subtract(debt), nodes);
     }
 
-    /** Current year and the previous ones ({@code years} in total), newest first. */
+    /** Only the years registered in {@code goals}: the {@code years} most recent ones, newest first. */
     public List<ProgressResponse> progress(Integer years) {
         int count = years == null ? 3 : Math.clamp(years, 1, MAX_YEARS);
         LocalDate today = LocalDate.now(clock);
-        int last = today.getYear();
-        int first = last - count + 1;
         Long userId = currentUser.id();
 
-        Map<Integer, BigDecimal> targets = goalRepository.findByUserIdAndYearBetween(userId, first, last).stream()
-                .collect(Collectors.toMap(Goal::getYear, Goal::getTargetAmount));
+        List<Goal> goals = goalRepository.findByUserIdOrderByYearDesc(userId).stream()
+                .limit(count)
+                .toList();
+        if (goals.isEmpty()) {
+            return List.of();
+        }
+        int first = goals.getLast().getYear();
+        int last = goals.getFirst().getYear();
         Map<Integer, Map<Integer, BigDecimal>> nets = new HashMap<>();
         for (DashboardRepository.MonthNet row : dashboardRepository.monthlyNets(userId, first, last)) {
             nets.computeIfAbsent(row.year(), key -> new HashMap<>()).put(row.month(), row.net());
         }
-        return IntStream.rangeClosed(first, last)
-                .map(year -> last - (year - first))
-                .mapToObj(year -> GoalProgress.of(year, targets.get(year), nets.getOrDefault(year, Map.of()), today))
+        return goals.stream()
+                .map(goal -> GoalProgress.of(
+                        goal.getYear(), goal.getTargetAmount(), nets.getOrDefault(goal.getYear(), Map.of()), today))
                 .toList();
     }
 }

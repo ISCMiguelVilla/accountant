@@ -7,6 +7,7 @@ import {
   input,
   numberAttribute,
   signal,
+  untracked,
 } from '@angular/core';
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { FormGroup, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -68,9 +69,21 @@ const DEFAULT_PAYMENT_CRON = '0 0 0 5 * *';
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <h1 class="mb-4 text-2xl font-semibold">
-      {{ (isEdit() ? 'accounts.edit' : 'accounts.new') | translate }}
-    </h1>
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <h1 class="m-0 text-2xl font-semibold">
+        {{ (isEdit() ? 'accounts.edit' : 'accounts.new') | translate }}
+      </h1>
+      @if (account.value()?.parent; as parent) {
+        <p-button
+          size="small"
+          icon="pi pi-arrow-up"
+          severity="secondary"
+          [outlined]="true"
+          [label]="'accounts.goToParent' | translate: { name: parent.name }"
+          [routerLink]="['/accounts', parent.id]"
+        />
+      }
+    </div>
 
     <form class="flex max-w-3xl flex-col gap-4" [formGroup]="form" (ngSubmit)="save()">
       @if (error(); as message) {
@@ -87,7 +100,7 @@ const DEFAULT_PAYMENT_CRON = '0 0 0 5 * *';
                 [color]="colorHex()"
                 [type]="type()"
               />
-              <input pInputText id="name" formControlName="name" class="flex-1" />
+              <input pInputText pSize="small" id="name" formControlName="name" class="flex-1" />
             </div>
             <app-field-error [control]="form.controls.name" />
           </div>
@@ -95,6 +108,7 @@ const DEFAULT_PAYMENT_CRON = '0 0 0 5 * *';
           <div class="flex flex-col gap-2">
             <label for="type">{{ 'accounts.type' | translate }}</label>
             <p-select
+              size="small"
               inputId="type"
               formControlName="type"
               [options]="typeOptions()"
@@ -121,6 +135,7 @@ const DEFAULT_PAYMENT_CRON = '0 0 0 5 * *';
           <div class="flex flex-col gap-2">
             <label for="parent">{{ 'accounts.parent' | translate }}</label>
             <p-select
+              size="small"
               inputId="parent"
               formControlName="parentId"
               [options]="parents.value() ?? []"
@@ -132,12 +147,14 @@ const DEFAULT_PAYMENT_CRON = '0 0 0 5 * *';
               [placeholder]="'accounts.noParent' | translate"
               styleClass="w-full"
             />
+            <small class="text-muted-color">{{ 'accounts.parentHelp' | translate }}</small>
             <app-field-error [control]="form.controls.parentId" />
           </div>
 
           <div class="flex flex-col gap-2">
             <label for="currency">{{ 'accounts.currency' | translate }}</label>
             <p-select
+              size="small"
               inputId="currency"
               formControlName="currencyId"
               [options]="currencies.value() ?? []"
@@ -159,6 +176,7 @@ const DEFAULT_PAYMENT_CRON = '0 0 0 5 * *';
             <div class="flex flex-col gap-2">
               <span>{{ 'common.status' | translate }}</span>
               <p-selectbutton
+                size="small"
                 formControlName="status"
                 [options]="statusOptions"
                 [allowEmpty]="false"
@@ -176,6 +194,7 @@ const DEFAULT_PAYMENT_CRON = '0 0 0 5 * *';
             <div class="flex flex-col gap-2">
               <label for="balance">{{ 'accounts.balance' | translate }}</label>
               <p-inputnumber
+                size="small"
                 inputId="balance"
                 formControlName="balance"
                 mode="decimal"
@@ -207,19 +226,39 @@ const DEFAULT_PAYMENT_CRON = '0 0 0 5 * *';
             <label for="color">{{ 'accounts.color' | translate }}</label>
             <div class="flex items-center gap-3">
               <p-colorpicker inputId="color" formControlName="color" />
-              <span class="font-mono text-sm">{{ colorHex() ?? '—' }}</span>
+              <input
+                #colorInput
+                pInputText
+                pSize="small"
+                class="w-28 font-mono"
+                maxlength="7"
+                placeholder="#RRGGBB"
+                [attr.aria-label]="'accounts.colorHex' | translate"
+                [value]="colorHex() ?? ''"
+                (input)="typeColor(colorInput.value)"
+                (blur)="colorText.set(null); colorInput.value = colorHex() ?? ''"
+              />
             </div>
+            @if (colorText() !== null && !colorTextValid()) {
+              <small class="text-red-500" role="alert">{{
+                'accounts.colorInvalid' | translate
+              }}</small>
+            }
           </div>
 
           <div class="flex items-center gap-3">
-            <p-toggleswitch inputId="includeInBalance" formControlName="includeInBalance" />
+            <p-toggleswitch
+              size="small"
+              inputId="includeInBalance"
+              formControlName="includeInBalance"
+            />
             <label for="includeInBalance">{{ 'accounts.includeInBalance' | translate }}</label>
           </div>
 
           @if (showTemporary()) {
             <div class="flex flex-col gap-1">
               <div class="flex items-center gap-3">
-                <p-toggleswitch inputId="temporary" formControlName="temporary" />
+                <p-toggleswitch size="small" inputId="temporary" formControlName="temporary" />
                 <label for="temporary">{{ 'accounts.temporary' | translate }}</label>
               </div>
               <small class="text-muted-color">{{ 'accounts.temporaryHelp' | translate }}</small>
@@ -232,13 +271,14 @@ const DEFAULT_PAYMENT_CRON = '0 0 0 5 * *';
         <p-card [header]="'accounts.credit.title' | translate">
           <div class="flex flex-col gap-4" [formGroup]="creditForm">
             <div class="flex items-center gap-3">
-              <p-toggleswitch inputId="hasCredit" formControlName="enabled" />
+              <p-toggleswitch size="small" inputId="hasCredit" formControlName="enabled" />
               <label for="hasCredit">{{ 'accounts.credit.enabled' | translate }}</label>
             </div>
             @if (creditForm.controls.enabled.value) {
               <div class="flex flex-col gap-2">
                 <label for="creditLimit">{{ 'accounts.credit.limit' | translate }}</label>
                 <p-inputnumber
+                  size="small"
                   inputId="creditLimit"
                   formControlName="creditLimit"
                   mode="decimal"
@@ -277,12 +317,14 @@ const DEFAULT_PAYMENT_CRON = '0 0 0 5 * *';
 
       <div class="flex justify-end gap-2">
         <p-button
+          size="small"
           [label]="'common.cancel' | translate"
           severity="secondary"
           [text]="true"
           [routerLink]="isEdit() ? ['/accounts', id()] : ['/accounts']"
         />
         <p-button
+          size="small"
           type="submit"
           icon="pi pi-check"
           [label]="'common.save' | translate"
@@ -302,6 +344,9 @@ export class AccountFormPage {
 
   /** Route param `:id` (absent when creating). */
   readonly id = input(undefined, { transform: numberAttribute });
+  /** Query param `parentId` ("Add sub-account" in the detail): preselects the parent when creating. */
+  readonly parentId = input(undefined, { transform: numberAttribute });
+  private presetApplied = false;
 
   protected readonly isEdit = computed(() => !!this.id() && !Number.isNaN(this.id()));
   protected readonly saving = signal(false);
@@ -342,6 +387,14 @@ export class AccountFormPage {
 
   protected readonly currencies = rxResource({ stream: () => this.currencyApi.options() });
 
+  private readonly presetParent = rxResource({
+    params: () => {
+      const parentId = this.parentId();
+      return !this.isEdit() && parentId && Number.isFinite(parentId) ? parentId : undefined;
+    },
+    stream: ({ params: id }) => this.api.findById(id),
+  });
+
   protected readonly parents = rxResource({
     params: () => ({ type: this.type(), accountId: this.isEdit() ? this.id() : null }),
     stream: ({ params }) => this.api.parentOptions(params.type, params.accountId),
@@ -376,13 +429,19 @@ export class AccountFormPage {
   protected readonly showBalance = computed(() => hasBalance(this.type()));
   protected readonly showTemporary = computed(() => canBeTemporary(this.type()));
   protected readonly colorHex = computed(() => normalizeColor(this.colorValue()));
+  /** Text being typed in the hex box (null when not editing it). */
+  protected readonly colorText = signal<string | null>(null);
+  protected readonly colorTextValid = computed(() => {
+    const text = this.colorText();
+    return !text || normalizeColor(text) !== null;
+  });
 
   constructor() {
     // Fill the form once the account (edit) or the currencies (create) are loaded.
     effect(() => {
       const account = this.account.value();
       if (account) {
-        this.fill(account);
+        untracked(() => this.fill(account));
       }
     });
     effect(() => {
@@ -393,6 +452,28 @@ export class AccountFormPage {
         );
       }
     });
+    // "Add sub-account": a type the parent accepts (its own type, except under a GROUP), then the parent.
+    effect(() => {
+      const parent = this.presetParent.value();
+      if (!parent || parent.type === 'GROUP') {
+        return;
+      }
+      const allowed = ALLOWED_CHILDREN[parent.type];
+      untracked(() =>
+        this.form.controls.type.setValue(allowed.includes(parent.type) ? parent.type : allowed[0]),
+      );
+    });
+    effect(() => {
+      const parent = this.presetParent.value();
+      const parents = this.parents.value();
+      if (!parent || !parents || this.presetApplied) {
+        return;
+      }
+      if (parents.some((option) => option.id === parent.id)) {
+        this.presetApplied = true;
+        untracked(() => this.form.controls.parentId.setValue(parent.id));
+      }
+    });
     // Drop a parent that no longer accepts the selected type.
     effect(() => {
       const parents = this.parents.value();
@@ -401,6 +482,20 @@ export class AccountFormPage {
         this.form.controls.parentId.setValue(null);
       }
     });
+  }
+
+  /** A valid hex typed in the box updates the color (and so the picker); empty clears it. */
+  protected typeColor(text: string): void {
+    this.colorText.set(text);
+    const trimmed = text.trim();
+    if (!trimmed) {
+      this.form.controls.color.setValue(null);
+      return;
+    }
+    const color = normalizeColor(trimmed);
+    if (color) {
+      this.form.controls.color.setValue(color);
+    }
   }
 
   protected save(): void {

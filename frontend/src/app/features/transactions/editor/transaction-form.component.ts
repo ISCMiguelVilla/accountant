@@ -90,7 +90,13 @@ interface BalancePreview {
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <div class="flex flex-col gap-2">
             <label for="type">{{ 'transactions.type' | translate }}</label>
-            <p-select inputId="type" formControlName="type" [options]="types" styleClass="w-full">
+            <p-select
+              size="small"
+              inputId="type"
+              formControlName="type"
+              [options]="types"
+              styleClass="w-full"
+            >
               <ng-template #selectedItem let-type>
                 <i [class]="type | transactionTypeIcon" class="mr-2"></i
                 >{{ 'enums.transactionType.' + type | translate }}
@@ -112,6 +118,7 @@ interface BalancePreview {
           <div class="flex flex-col gap-2">
             <label for="origin">{{ 'transactions.origin' | translate }}</label>
             <p-select
+              size="small"
               inputId="origin"
               formControlName="originAccountId"
               [options]="originOptions()"
@@ -144,6 +151,7 @@ interface BalancePreview {
                 }
               </label>
               <p-select
+                size="small"
                 inputId="destination"
                 formControlName="destinationAccountId"
                 [options]="destinationOptions()"
@@ -173,6 +181,7 @@ interface BalancePreview {
             <label for="amount">{{ 'transactions.amount' | translate }}</label>
             <div class="flex gap-2">
               <p-inputnumber
+                size="small"
                 inputId="amount"
                 formControlName="amount"
                 mode="decimal"
@@ -185,6 +194,7 @@ interface BalancePreview {
               />
               @if (canUseTotal()) {
                 <p-button
+                  size="small"
                   icon="pi pi-arrow-circle-down"
                   severity="secondary"
                   [outlined]="true"
@@ -200,6 +210,7 @@ interface BalancePreview {
           <div class="flex flex-col gap-2">
             <label for="fee">{{ 'transactions.fee' | translate }}</label>
             <p-inputnumber
+              size="small"
               inputId="fee"
               formControlName="fee"
               mode="decimal"
@@ -217,6 +228,7 @@ interface BalancePreview {
           <div class="flex flex-col gap-2">
             <label for="date">{{ 'transactions.operationDate' | translate }}</label>
             <p-datepicker
+              size="small"
               inputId="date"
               formControlName="operationDate"
               [showTime]="true"
@@ -237,6 +249,7 @@ interface BalancePreview {
             <label for="description">{{ 'transactions.description' | translate }}</label>
             <input
               pInputText
+              pSize="small"
               id="description"
               formControlName="description"
               (input)="descriptionEdited.set(!!form.controls.description.value)"
@@ -248,7 +261,7 @@ interface BalancePreview {
             <div class="flex flex-col gap-2">
               <label for="pending">{{ 'transactions.pending' | translate }}</label>
               <div class="flex items-center gap-3">
-                <p-toggleswitch inputId="pending" formControlName="pending" />
+                <p-toggleswitch size="small" inputId="pending" formControlName="pending" />
                 <small class="text-muted-color">{{
                   'transactions.pendingHelp.' + value().type | translate
                 }}</small>
@@ -299,6 +312,7 @@ interface BalancePreview {
         <div class="flex flex-wrap justify-end gap-2">
           @if (editing() || scheduled()) {
             <p-button
+              size="small"
               [label]="'common.cancel' | translate"
               severity="secondary"
               [text]="true"
@@ -306,6 +320,7 @@ interface BalancePreview {
             />
           }
           <p-button
+            size="small"
             type="submit"
             [icon]="editing() ? 'pi pi-check' : 'pi pi-plus'"
             [label]="(editing() ? 'transactions.update' : 'transactions.add') | translate"
@@ -565,7 +580,7 @@ export class TransactionFormComponent {
 
     effect(() => {
       const editing = this.editing();
-      untracked(() => (editing ? this.load(editing) : this.reset(false)));
+      untracked(() => (editing ? this.load(editing) : this.reset()));
     });
   }
 
@@ -602,7 +617,7 @@ export class TransactionFormComponent {
     this.messages.clear();
     this.done.emit();
     if (!this.editing()) {
-      this.reset(true);
+      this.reset();
     }
   }
 
@@ -625,7 +640,7 @@ export class TransactionFormComponent {
 
   protected cancel(): void {
     if (!this.editing()) {
-      this.reset(false);
+      this.reset();
     }
     this.done.emit();
   }
@@ -669,19 +684,18 @@ export class TransactionFormComponent {
     }
   }
 
-  /** New transaction; after an add the type, accounts and date stay for fast capture. */
-  private reset(keepContext: boolean): void {
-    const value = this.form.getRawValue();
+  /** Empty form for a new transaction (also after each add). */
+  private reset(): void {
     this.uuid.set(crypto.randomUUID());
     this.scheduleId.set(null);
     this.descriptionEdited.set(false);
     this.form.reset({
-      type: keepContext ? value.type : 'EXPENSE',
-      originAccountId: keepContext ? value.originAccountId : null,
-      destinationAccountId: keepContext ? value.destinationAccountId : null,
+      type: 'EXPENSE',
+      originAccountId: null,
+      destinationAccountId: null,
       amount: null,
       fee: 0,
-      operationDate: keepContext ? value.operationDate : new Date(),
+      operationDate: new Date(),
       pending: false,
       description: '',
     });

@@ -58,6 +58,7 @@ type Mode = 'day' | 'last' | 'advanced';
           <div class="flex items-center gap-2">
             <span>{{ 'cron.dayOfMonth' | translate }}</span>
             <p-inputnumber
+              size="small"
               [ngModel]="day()"
               (ngModelChange)="changeDay($event)"
               [min]="1"
@@ -72,6 +73,7 @@ type Mode = 'day' | 'last' | 'advanced';
         @case ('advanced') {
           <input
             pInputText
+            pSize="small"
             class="font-mono"
             [id]="inputId()"
             [ngModel]="expression()"

@@ -34,12 +34,19 @@ import { AuthShellComponent } from './auth-shell.component';
         }
         <div class="flex flex-col gap-2">
           <label for="username">{{ 'auth.username' | translate }}</label>
-          <input pInputText id="username" formControlName="username" autocomplete="username" />
+          <input
+            pInputText
+            pSize="small"
+            id="username"
+            formControlName="username"
+            autocomplete="username"
+          />
           <app-field-error [control]="form.controls.username" />
         </div>
         <div class="flex flex-col gap-2">
           <label for="password">{{ 'auth.password' | translate }}</label>
           <p-password
+            size="small"
             inputId="password"
             formControlName="password"
             [feedback]="false"
@@ -51,6 +58,7 @@ import { AuthShellComponent } from './auth-shell.component';
           <app-field-error [control]="form.controls.password" />
         </div>
         <p-button
+          size="small"
           type="submit"
           [label]="'auth.signIn.action' | translate"
           icon="pi pi-sign-in"

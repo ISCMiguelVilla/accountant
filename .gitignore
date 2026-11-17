@@ -11,6 +11,8 @@
 *.local.yml
 *.local.properties
 backend/application-local.yml
+# Respaldos de la base de datos (datos personales): nunca versionar
+backup_*.sql
 
 # ---------------------------------------------------------------------
 # Sistema operativo

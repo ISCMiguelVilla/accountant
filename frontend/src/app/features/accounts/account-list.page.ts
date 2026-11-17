@@ -43,7 +43,12 @@ import { AccountApiService } from './account-api.service';
   template: `
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
       <h1 class="m-0 text-2xl font-semibold">{{ 'accounts.title' | translate }}</h1>
-      <p-button icon="pi pi-plus" [label]="'accounts.new' | translate" routerLink="/accounts/new" />
+      <p-button
+        size="small"
+        icon="pi pi-plus"
+        [label]="'accounts.new' | translate"
+        routerLink="/accounts/new"
+      />
     </div>
 
     <app-table-filter-bar (clear)="table.clearFilters()">
@@ -53,6 +58,7 @@ import { AccountApiService } from './account-api.service';
         (changed)="table.setFilter('name', $event)"
       />
       <p-multiselect
+        size="small"
         [options]="typeOptions"
         [ngModel]="table.filter('type') ?? []"
         (ngModelChange)="table.setFilter('type', $event)"
@@ -66,6 +72,7 @@ import { AccountApiService } from './account-api.service';
         </ng-template>
       </p-multiselect>
       <p-multiselect
+        size="small"
         [options]="statusOptions"
         [ngModel]="table.filter('status') ?? []"
         (ngModelChange)="table.setFilter('status', $event)"
@@ -83,6 +90,7 @@ import { AccountApiService } from './account-api.service';
     </app-table-filter-bar>
 
     <p-table
+      size="small"
       [value]="accounts()"
       [lazy]="true"
       [loading]="data.isLoading()"

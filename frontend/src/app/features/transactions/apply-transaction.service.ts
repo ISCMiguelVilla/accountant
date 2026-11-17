@@ -25,8 +25,12 @@ export class ApplyTransactionService {
         },
       )} ${temporaryHint}`.trim(),
       icon: 'pi pi-check-circle',
-      acceptButtonProps: { label: this.translate.instant('transactions.apply.action') },
+      acceptButtonProps: {
+        size: 'small',
+        label: this.translate.instant('transactions.apply.action'),
+      },
       rejectButtonProps: {
+        size: 'small',
         label: this.translate.instant('common.cancel'),
         severity: 'secondary',
         text: true,

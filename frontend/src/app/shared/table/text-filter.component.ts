@@ -24,6 +24,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
       <p-inputicon styleClass="pi pi-search" />
       <input
         pInputText
+        pSize="small"
         type="search"
         [formControl]="control"
         [placeholder]="placeholder()"

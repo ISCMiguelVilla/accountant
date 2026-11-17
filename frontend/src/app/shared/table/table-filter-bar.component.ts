@@ -11,6 +11,7 @@ import { ButtonModule } from 'primeng/button';
     <div class="mb-4 flex flex-wrap items-end gap-3">
       <ng-content />
       <p-button
+        size="small"
         icon="pi pi-filter-slash"
         [label]="'common.clearFilters' | translate"
         [text]="true"

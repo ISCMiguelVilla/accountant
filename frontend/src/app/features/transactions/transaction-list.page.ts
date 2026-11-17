@@ -54,6 +54,7 @@ import { TransactionApiService } from './transaction-api.service';
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
       <h1 class="m-0 text-2xl font-semibold">{{ 'transactions.title' | translate }}</h1>
       <p-button
+        size="small"
         icon="pi pi-plus"
         [label]="'transactions.batch.new' | translate"
         routerLink="/transactions/batch"
@@ -67,6 +68,7 @@ import { TransactionApiService } from './transaction-api.service';
         (changed)="table.setFilter('description', $event)"
       />
       <p-multiselect
+        size="small"
         [options]="typeOptions"
         [ngModel]="table.filter('type') ?? []"
         (ngModelChange)="table.setFilter('type', $event)"
@@ -82,6 +84,7 @@ import { TransactionApiService } from './transaction-api.service';
         </ng-template>
       </p-multiselect>
       <p-select
+        size="small"
         [options]="accounts.value() ?? []"
         optionLabel="name"
         optionValue="id"
@@ -93,6 +96,7 @@ import { TransactionApiService } from './transaction-api.service';
         styleClass="min-w-48"
       />
       <p-select
+        size="small"
         [options]="appliedOptions"
         optionLabel="label"
         optionValue="value"
@@ -106,6 +110,7 @@ import { TransactionApiService } from './transaction-api.service';
         <ng-template #item let-option>{{ option.label | translate }}</ng-template>
       </p-select>
       <p-datepicker
+        size="small"
         [ngModel]="dateFilter('dateFrom')"
         (ngModelChange)="setDate('dateFrom', $event)"
         [showClear]="true"
@@ -113,6 +118,7 @@ import { TransactionApiService } from './transaction-api.service';
         [showIcon]="true"
       />
       <p-datepicker
+        size="small"
         [ngModel]="dateFilter('dateTo')"
         (ngModelChange)="setDate('dateTo', $event)"
         [showClear]="true"
@@ -131,6 +137,7 @@ import { TransactionApiService } from './transaction-api.service';
     </app-table-filter-bar>
 
     <p-table
+      size="small"
       [value]="transactions()"
       [lazy]="true"
       [loading]="data.isLoading()"

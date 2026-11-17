@@ -113,7 +113,7 @@ const LABEL_FORMATS: Record<Dimension, string> = {
       </div>
 
       @if (showTable()) {
-        <p-table [value]="periods()" [tableStyle]="{ 'min-width': '28rem' }">
+        <p-table size="small" [value]="periods()" [tableStyle]="{ 'min-width': '28rem' }">
           <ng-template #header>
             <tr>
               <th>{{ 'home.statement.period' | translate }}</th>

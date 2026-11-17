@@ -50,6 +50,7 @@ import { ScheduleApiService } from './schedule-api.service';
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
       <h1 class="m-0 text-2xl font-semibold">{{ 'schedules.title' | translate }}</h1>
       <p-button
+        size="small"
         icon="pi pi-plus"
         [label]="'schedules.new' | translate"
         routerLink="/schedules/new"
@@ -63,6 +64,7 @@ import { ScheduleApiService } from './schedule-api.service';
         (changed)="table.setFilter('description', $event)"
       />
       <p-multiselect
+        size="small"
         [options]="typeOptions"
         [ngModel]="table.filter('type') ?? []"
         (ngModelChange)="table.setFilter('type', $event)"
@@ -78,6 +80,7 @@ import { ScheduleApiService } from './schedule-api.service';
         </ng-template>
       </p-multiselect>
       <p-multiselect
+        size="small"
         [options]="statusOptions"
         [ngModel]="table.filter('status') ?? []"
         (ngModelChange)="table.setFilter('status', $event)"
@@ -93,6 +96,7 @@ import { ScheduleApiService } from './schedule-api.service';
         </ng-template>
       </p-multiselect>
       <p-select
+        size="small"
         [options]="accounts.value() ?? []"
         optionLabel="name"
         optionValue="id"
@@ -106,6 +110,7 @@ import { ScheduleApiService } from './schedule-api.service';
     </app-table-filter-bar>
 
     <p-table
+      size="small"
       [value]="schedules()"
       [lazy]="true"
       [loading]="data.isLoading()"
@@ -182,6 +187,7 @@ import { ScheduleApiService } from './schedule-api.service';
           </td>
           <td class="whitespace-nowrap text-right">
             <p-button
+              size="small"
               icon="pi pi-pencil"
               [text]="true"
               [rounded]="true"
@@ -191,6 +197,7 @@ import { ScheduleApiService } from './schedule-api.service';
               [routerLink]="['/schedules', schedule.id, 'edit']"
             />
             <p-button
+              size="small"
               icon="pi pi-step-forward"
               [text]="true"
               [rounded]="true"
@@ -200,6 +207,7 @@ import { ScheduleApiService } from './schedule-api.service';
               (onClick)="confirmSkip(schedule)"
             />
             <p-button
+              size="small"
               [icon]="schedule.status === 'ACTIVE' ? 'pi pi-pause' : 'pi pi-play'"
               [text]="true"
               [rounded]="true"
@@ -215,6 +223,7 @@ import { ScheduleApiService } from './schedule-api.service';
               (onClick)="toggle(schedule)"
             />
             <p-button
+              size="small"
               icon="pi pi-trash"
               [text]="true"
               [rounded]="true"
@@ -285,8 +294,9 @@ export class ScheduleListPage {
         description: schedule.description,
       }),
       icon: 'pi pi-step-forward',
-      acceptButtonProps: { label: this.translate.instant('schedules.skip') },
+      acceptButtonProps: { size: 'small', label: this.translate.instant('schedules.skip') },
       rejectButtonProps: {
+        size: 'small',
         label: this.translate.instant('common.cancel'),
         severity: 'secondary',
         text: true,
@@ -306,8 +316,13 @@ export class ScheduleListPage {
         description: schedule.description,
       }),
       icon: 'pi pi-exclamation-triangle',
-      acceptButtonProps: { label: this.translate.instant('common.delete'), severity: 'danger' },
+      acceptButtonProps: {
+        size: 'small',
+        label: this.translate.instant('common.delete'),
+        severity: 'danger',
+      },
       rejectButtonProps: {
+        size: 'small',
         label: this.translate.instant('common.cancel'),
         severity: 'secondary',
         text: true,

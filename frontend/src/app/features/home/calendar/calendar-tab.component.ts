@@ -59,6 +59,7 @@ interface Cell {
       <h2 class="m-0 text-xl font-semibold capitalize">{{ monthLabel() }}</h2>
       <div class="flex items-center gap-1">
         <p-button
+          size="small"
           icon="pi pi-chevron-left"
           [text]="true"
           [ariaLabel]="'home.calendar.previous' | translate"
@@ -72,6 +73,7 @@ interface Cell {
           (onClick)="month.set(today)"
         />
         <p-button
+          size="small"
           icon="pi pi-chevron-right"
           [text]="true"
           [ariaLabel]="'home.calendar.next' | translate"

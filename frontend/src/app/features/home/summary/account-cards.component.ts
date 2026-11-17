@@ -44,13 +44,13 @@ import { AccountApiService } from '../../accounts/account-api.service';
           }
         </div>
       </div>
-      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 2xl:grid-cols-3">
         @for (account of accounts.value() ?? []; track account.id) {
           <a
             [routerLink]="['/accounts', account.id]"
-            class="flex flex-col gap-3 rounded-border border border-surface bg-surface-0 p-4 text-color no-underline transition-colors hover:border-primary dark:bg-surface-900"
+            class="flex flex-col gap-1.5 rounded-border border border-surface bg-surface-0 px-3 py-2 text-sm text-color no-underline transition-colors hover:border-primary dark:bg-surface-900"
           >
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2">
               <app-account-avatar
                 [icon]="account.icon"
                 [color]="account.color"
@@ -65,7 +65,7 @@ import { AccountApiService } from '../../accounts/account-api.service';
                 />
               </div>
             </div>
-            <span class="font-mono text-xl font-semibold">{{
+            <span class="font-mono text-base font-semibold">{{
               account.balance | money: account.currency.iso
             }}</span>
             @if (account.credit; as credit) {
@@ -92,9 +92,9 @@ import { AccountApiService } from '../../accounts/account-api.service';
         }
         <a
           routerLink="/accounts/new"
-          class="flex min-h-32 flex-col items-center justify-center gap-2 rounded-border border border-dashed border-surface p-4 text-muted-color no-underline transition-colors hover:border-primary hover:text-color"
+          class="flex min-h-20 flex-col items-center justify-center gap-1 rounded-border border border-dashed border-surface px-3 py-2 text-sm text-muted-color no-underline transition-colors hover:border-primary hover:text-color"
         >
-          <i class="pi pi-plus text-xl"></i>
+          <i class="pi pi-plus"></i>
           <span>{{ 'accounts.new' | translate }}</span>
         </a>
       </div>

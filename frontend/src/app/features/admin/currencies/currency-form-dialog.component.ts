@@ -52,7 +52,7 @@ import { CurrencyApiService } from './currency-api.service';
         }
         <div class="flex flex-col gap-2">
           <label for="currency-name">{{ 'common.name' | translate }}</label>
-          <input pInputText id="currency-name" formControlName="name" />
+          <input pInputText pSize="small" id="currency-name" formControlName="name" />
           <app-field-error [control]="form.controls.name" />
         </div>
         <div class="grid grid-cols-2 gap-4">
@@ -60,6 +60,7 @@ import { CurrencyApiService } from './currency-api.service';
             <label for="currency-iso">{{ 'admin.currencies.iso' | translate }}</label>
             <input
               pInputText
+              pSize="small"
               id="currency-iso"
               formControlName="iso"
               maxlength="3"
@@ -69,13 +70,20 @@ import { CurrencyApiService } from './currency-api.service';
           </div>
           <div class="flex flex-col gap-2">
             <label for="currency-symbol">{{ 'admin.currencies.symbol' | translate }}</label>
-            <input pInputText id="currency-symbol" formControlName="symbol" maxlength="5" />
+            <input
+              pInputText
+              pSize="small"
+              id="currency-symbol"
+              formControlName="symbol"
+              maxlength="5"
+            />
             <app-field-error [control]="form.controls.symbol" />
           </div>
         </div>
         <div class="flex flex-col gap-2">
           <span>{{ 'common.status' | translate }}</span>
           <p-selectbutton
+            size="small"
             [options]="statusOptions"
             formControlName="status"
             [allowEmpty]="false"
@@ -88,12 +96,18 @@ import { CurrencyApiService } from './currency-api.service';
         </div>
         <div class="flex justify-end gap-2">
           <p-button
+            size="small"
             [label]="'common.cancel' | translate"
             severity="secondary"
             [text]="true"
             (onClick)="closed.emit()"
           />
-          <p-button type="submit" [label]="'common.save' | translate" [loading]="saving()" />
+          <p-button
+            size="small"
+            type="submit"
+            [label]="'common.save' | translate"
+            [loading]="saving()"
+          />
         </div>
       </form>
     </p-dialog>

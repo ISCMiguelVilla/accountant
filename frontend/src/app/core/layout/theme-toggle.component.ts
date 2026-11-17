@@ -10,6 +10,7 @@ import { ThemeService } from '../theme/theme.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <p-button
+      size="small"
       [icon]="theme.darkMode() ? 'pi pi-sun' : 'pi pi-moon'"
       [text]="true"
       [rounded]="true"

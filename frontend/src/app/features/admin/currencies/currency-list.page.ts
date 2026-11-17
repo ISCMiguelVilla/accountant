@@ -37,6 +37,7 @@ import { CurrencyFormDialogComponent } from './currency-form-dialog.component';
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
       <h1 class="m-0 text-2xl font-semibold">{{ 'admin.currencies.title' | translate }}</h1>
       <p-button
+        size="small"
         icon="pi pi-plus"
         [label]="'admin.currencies.new' | translate"
         (onClick)="editing.set('new')"
@@ -51,6 +52,7 @@ import { CurrencyFormDialogComponent } from './currency-form-dialog.component';
         (changed)="table.setFilter('name', $event)"
       />
       <p-multiselect
+        size="small"
         [options]="statusOptions"
         [ngModel]="table.filter('status') ?? []"
         (ngModelChange)="table.setFilter('status', $event)"
@@ -65,6 +67,7 @@ import { CurrencyFormDialogComponent } from './currency-form-dialog.component';
     </app-table-filter-bar>
 
     <p-table
+      size="small"
       [value]="currencies()"
       [lazy]="true"
       [loading]="data.isLoading()"
@@ -109,6 +112,7 @@ import { CurrencyFormDialogComponent } from './currency-form-dialog.component';
           </td>
           <td>
             <p-button
+              size="small"
               icon="pi pi-pencil"
               [text]="true"
               [rounded]="true"
