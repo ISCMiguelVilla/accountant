@@ -77,11 +77,10 @@ accountant/
 │       ├── shared/              # componentes, enums, modelos, pipes, dinero, tablas, cron, formularios
 │       └── features/            # auth, home, accounts, transactions, schedules, admin
 ├── docker/                      # Dockerfiles (+ .dockerignore) y configuración de NGINX
-├── test-fixtures/               # datos de prueba compartidos por backend y frontend
-│   ├── transaction-cases.json   # casos del motor de transacciones
-│   └── transaction-rules.json   # copia de GET /transactions/rules
 ├── docs/
 │   ├── documentacion-tecnica.md # este documento
+│   ├── transaction-cases.json   # casos del motor de transacciones (pruebas backend y frontend)
+│   ├── transaction-rules.json   # copia de GET /transactions/rules (pruebas del frontend)
 │   └── images/                  # capturas usadas en el README
 ├── docker-compose.yml           # NGINX + backend (perfil prod)
 ├── .env.example                 # variables de Docker Compose (sin secretos reales)
@@ -461,8 +460,8 @@ La documentación interactiva (Swagger UI) está disponible en el perfil `dev`.
 
 | Área | Qué se prueba |
 |---|---|
-| Motor (backend y frontend) | Los mismos casos de [`test-fixtures/transaction-cases.json`](../test-fixtures/transaction-cases.json): cada tipo y variante, validaciones (fondos, límite, sin sentido, comisión), pendientes, cuenta temporal, orden por fecha, redondeo y totales de reportes |
-| Reglas | [`test-fixtures/transaction-rules.json`](../test-fixtures/transaction-rules.json) es una copia de `GET /transactions/rules` que usan las pruebas del frontend; una prueba del backend falla si deja de coincidir (se regenera con `./mvnw test -Dtest=TransactionServiceImplTest -Drules.fixture.update=true`) |
+| Motor (backend y frontend) | Los mismos casos de [`docs/transaction-cases.json`](transaction-cases.json): cada tipo y variante, validaciones (fondos, límite, sin sentido, comisión), pendientes, cuenta temporal, orden por fecha, redondeo y totales de reportes |
+| Reglas | [`docs/transaction-rules.json`](transaction-rules.json) es una copia de `GET /transactions/rules` que usan las pruebas del frontend; una prueba del backend falla si deja de coincidir (se regenera con `./mvnw test -Dtest=TransactionServiceImplTest -Drules.fixture.update=true`) |
 | Servicios del backend (Mockito) | Lote (rollback, saldos, programadas, fechas), aplicar pendientes, cuentas (ciclos, cambio de tipo, borrado, actualización parcial), crédito, programadas, metas, reportes (ventanas, árbol, progreso) y expansión de crons del calendario |
 | Frontend (Vitest) | Motor TS, borrador (persistencia, restauración, cambio de versión, fechas), dinero, consultas de tabla, i18n (paridad de claves) y autenticación |
 

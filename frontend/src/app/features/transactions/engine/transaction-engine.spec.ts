@@ -1,5 +1,5 @@
-import cases from '../../../../../../test-fixtures/transaction-cases.json';
-import rules from '../../../../../../test-fixtures/transaction-rules.json';
+import cases from '../../../../../../docs/transaction-cases.json';
+import rules from '../../../../../../docs/transaction-rules.json';
 import { AccountStatus } from '../../../shared/enums/account-status.enum';
 import { AccountType } from '../../../shared/enums/account-type.enum';
 import { TransactionType } from '../../../shared/enums/transaction-type.enum';
@@ -13,7 +13,7 @@ import {
   batchReport,
 } from './transaction-engine';
 
-/** Shape of `test-fixtures/transaction-cases.json` (shared with the backend engine test). */
+/** Shape of `docs/transaction-cases.json` (shared with the backend engine test). */
 interface CaseAccount {
   id: number;
   type: string;
@@ -87,7 +87,7 @@ function cents(value: string | null): Cents | null {
   return value === null ? null : toCents(value);
 }
 
-describe('TransactionEngine (test-fixtures/transaction-cases.json)', () => {
+describe('TransactionEngine (docs/transaction-cases.json)', () => {
   const shared = (cases as { cases: SharedCase[] }).cases;
 
   it('loads the shared cases', () => {

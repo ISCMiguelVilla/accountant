@@ -56,7 +56,7 @@ class TransactionServiceImplTest {
     private static final long USER = 1L;
     private static final ZoneId MX = ZoneId.of("America/Mexico_City");
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 10, 27, 9, 0);
-    private static final Path RULES_FIXTURE = Path.of("..", "test-fixtures", "transaction-rules.json");
+    private static final Path RULES_FIXTURE = Path.of("..", "docs", "transaction-rules.json");
 
     @Mock
     private TransactionRepository transactionRepository;
@@ -417,7 +417,7 @@ class TransactionServiceImplTest {
     }
 
     /**
-     * {@code test-fixtures/transaction-rules.json} is the snapshot of this endpoint the TypeScript engine tests use; it must
+     * {@code docs/transaction-rules.json} is the snapshot of this endpoint the TypeScript engine tests use; it must
      * stay identical. Regenerate it with {@code -Drules.fixture.update=true}.
      */
     @Test

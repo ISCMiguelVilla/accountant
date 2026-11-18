@@ -217,9 +217,9 @@ El Inicio tiene dos pestañas. A la derecha de las pestañas se muestra tu **sal
 - **Calendario del mes** (la semana empieza en lunes): ingresos en verde y gastos en rojo por día, fechas de corte y pago de tus tarjetas y las próximas transacciones programadas (con borde punteado). Al hacer clic en un día se abre el detalle: transacciones aplicadas ese día, eventos de tarjetas y programadas.
 - **Meta de ahorro anual:** cuánto quieres ahorrar (neto) en el año y cómo vas. Muestra las metas que has registrado (las 3 más recientes), con una barra de avance, el estado del año y el estado de cada mes. Se define o edita con **Definir meta** o con el lápiz; la meta del año actual se puede eliminar, la de un año que ya terminó no.
 
-En modo claro el Inicio se ve así:
+Las capturas de esta guía están en modo claro; el sistema también tiene **modo oscuro**, que se activa con el botón de la luna en la barra superior (la preferencia se guarda en el navegador):
 
-![Inicio en modo claro](docs/images/14-inicio-modo-claro.png)
+![Inicio en modo oscuro](docs/images/14-inicio-modo-oscuro.png)
 
 ### Cuentas
 

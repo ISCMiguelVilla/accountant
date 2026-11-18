@@ -1,4 +1,4 @@
-import rules from '../../../../../../test-fixtures/transaction-rules.json';
+import rules from '../../../../../../docs/transaction-rules.json';
 import { AccountOption, TransactionRules } from '../../../shared/models/transaction.model';
 import {
   DRAFT_SCHEMA_VERSION,

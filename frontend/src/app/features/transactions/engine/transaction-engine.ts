@@ -11,7 +11,7 @@ import { Cents } from '../../../shared/money/money';
 /**
  * Pure transaction engine, the TypeScript twin of the backend `TransactionEngine`. It only implements
  * the arithmetic of the effects (docs/documentacion-tecnica.md §9.3): the rule matrix always comes from
- * `GET /transactions/rules`. Both engines run the cases of `test-fixtures/transaction-cases.json`.
+ * `GET /transactions/rules`. Both engines run the cases of `docs/transaction-cases.json`.
  *
  * Every amount is in integer cents. A = amount, F = fee. Pending (only EXPENSE, TRANSFER, INVEST,
  * PROFIT): the EXPENSE origin and the TRANSFER / INVEST / PROFIT destination change only when applied.
