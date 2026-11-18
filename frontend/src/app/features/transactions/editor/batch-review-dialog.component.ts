@@ -40,7 +40,7 @@ interface Review {
   scheduled: number;
 }
 
-/** "Review" (PROMPT 5.6.8): the summary of movements is the control before saving. */
+/** "Review" (docs/documentacion-tecnica.md §11.4): the summary of movements is the control before saving. */
 @Component({
   selector: 'app-batch-review-dialog',
   imports: [

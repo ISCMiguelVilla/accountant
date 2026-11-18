@@ -54,7 +54,7 @@ interface BalancePreview {
 
 /**
  * Form of one transaction of the batch, with the live preview of the balances before / after it
- * (PROMPT 5.4). Selectors and enabled fields come from the rules; balances from the draft projection.
+ * (docs/documentacion-tecnica.md §9.3). Selectors and enabled fields come from the rules; balances from the draft projection.
  */
 @Component({
   selector: 'app-transaction-form',

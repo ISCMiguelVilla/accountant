@@ -4,7 +4,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
 
-/** Period of the income statement, with its window size bounds (PROMPT 6.1). */
+/** Period of the income statement, with its window size bounds (docs/documentacion-tecnica.md §10). */
 public enum Dimension {
     YEAR(2, 4, 2, "1 year"),
     MONTH(3, 12, 6, "1 month"),

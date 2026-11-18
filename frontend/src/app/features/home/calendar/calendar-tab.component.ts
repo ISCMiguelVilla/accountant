@@ -38,7 +38,7 @@ interface Cell {
 }
 
 /**
- * Monthly calendar (PROMPT 6.2): weeks start on Monday; per day the applied income / expense, the
+ * Monthly calendar (docs/documentacion-tecnica.md §10): weeks start on Monday; per day the applied income / expense, the
  * credit cut-off and payment dates and the future scheduled transactions. Click → day detail.
  */
 @Component({

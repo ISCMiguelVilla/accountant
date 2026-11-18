@@ -2,7 +2,7 @@ import { Transaction } from '../../shared/models/transaction.model';
 import { Cents, toCents } from '../../shared/money/money';
 
 /**
- * Signed effect of a stored transaction on one of its accounts (PROMPT 5.4), including the pending
+ * Signed effect of a stored transaction on one of its accounts (docs/documentacion-tecnica.md §9.3), including the pending
  * effect not reflected yet. Accounts without balance get the amount that "flows" through them.
  */
 export function effectOn(transaction: Transaction, accountId: number): Cents {

@@ -9,7 +9,7 @@ import { AccountAvatarComponent } from '../../../shared/components/account-avata
 import { MoneyPipe } from '../../../shared/money/money.pipe';
 import { DashboardApiService } from '../dashboard-api.service';
 
-/** Accounts and sub-accounts grouped (PROMPT 6.1.4), computed by `/dashboard/summary`. */
+/** Accounts and sub-accounts grouped (docs/documentacion-tecnica.md §10), computed by `/dashboard/summary`. */
 @Component({
   selector: 'app-account-tree-card',
   imports: [

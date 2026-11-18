@@ -4,7 +4,7 @@ import { TransactionType } from '../../shared/enums/transaction-type.enum';
 export const DIMENSIONS = ['YEAR', 'MONTH', 'WEEK', 'DAY'] as const;
 export type Dimension = (typeof DIMENSIONS)[number];
 
-/** Window bounds per dimension (PROMPT 6.1), mirrored from the backend `Dimension`. */
+/** Window bounds per dimension (docs/documentacion-tecnica.md §10), mirrored from the backend `Dimension`. */
 export const DIMENSION_SIZES: Record<Dimension, { min: number; max: number; default: number }> = {
   YEAR: { min: 2, max: 4, default: 2 },
   MONTH: { min: 3, max: 12, default: 6 },

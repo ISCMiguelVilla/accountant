@@ -25,7 +25,7 @@ const LABEL_FORMATS: Record<Dimension, string> = {
   DAY: 'EEE d',
 };
 
-/** Income statement (PROMPT 6.1.1): income and expense bars plus the net line per period. */
+/** Income statement (docs/documentacion-tecnica.md §10): income and expense bars plus the net line per period. */
 @Component({
   selector: 'app-income-statement-card',
   imports: [

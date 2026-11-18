@@ -19,7 +19,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Home "Summary" tab (PROMPT 6.1): every figure only of the signed-in user. */
+/** Home "Summary" tab (docs/documentacion-tecnica.md §10): every figure only of the signed-in user. */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)

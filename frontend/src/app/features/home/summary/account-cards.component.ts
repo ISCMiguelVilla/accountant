@@ -12,7 +12,7 @@ import { MoneyPipe } from '../../../shared/money/money.pipe';
 import { AccountTypeSeverityPipe } from '../../../shared/pipes/account-type.pipes';
 import { AccountApiService } from '../../accounts/account-api.service';
 
-/** Cards of the accounts in use (PROMPT 5.1 rule 8 / 6.1.3), with the totals on top. */
+/** Cards of the accounts in use (docs/documentacion-tecnica.md §8.4 / §10), with the totals on top. */
 @Component({
   selector: 'app-account-cards',
   imports: [

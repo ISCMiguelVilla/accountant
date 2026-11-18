@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/** Yearly progress against the savings goal (PROMPT 6.1.4). */
+/** Yearly progress against the savings goal (docs/documentacion-tecnica.md §10). */
 public final class GoalProgress {
 
     private static final BigDecimal TWELVE = BigDecimal.valueOf(12);

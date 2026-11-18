@@ -36,7 +36,7 @@ interface ConceptRow {
   percentage: number;
 }
 
-/** Expenses of a month by concept (PROMPT 6.1.2), each with its account color; fees in neutral gray. */
+/** Expenses of a month by concept (docs/documentacion-tecnica.md §10), each with its account color; fees in neutral gray. */
 @Component({
   selector: 'app-expenses-card',
   imports: [

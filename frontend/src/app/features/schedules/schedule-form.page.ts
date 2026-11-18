@@ -40,7 +40,7 @@ import { ScheduleApiService } from './schedule-api.service';
 
 const DEFAULT_CRON = '0 0 0 1 * *';
 
-/** Scheduled transaction form: same matrix and enabled fields as a normal transaction (PROMPT 5.7). */
+/** Scheduled transaction form: same matrix and enabled fields as a normal transaction (docs/documentacion-tecnica.md §8.6). */
 @Component({
   selector: 'app-schedule-form-page',
   imports: [

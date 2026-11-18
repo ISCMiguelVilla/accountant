@@ -18,7 +18,7 @@ import java.util.Map;
  *
  * <p>Pending (only EXPENSE, TRANSFER, INVEST, PROFIT): the EXPENSE origin and the TRANSFER / INVEST / PROFIT
  * destination change only when the transaction is applied ({@link #applyPending}). Notation: A = amount, F = fee. See
- * {@code docs/business-rules.md}; {@code docs/transaction-cases.json} holds the cases shared with the TypeScript
+ * {@code docs/documentacion-tecnica.md}; {@code test-fixtures/transaction-cases.json} holds the cases shared with the TypeScript
  * engine.
  */
 public final class TransactionEngine {

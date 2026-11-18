@@ -31,7 +31,7 @@ const ICONS: Record<ProgressStatus, string> = {
   DANGER: 'pi pi-times',
 };
 
-/** Yearly savings progress against the goal (PROMPT 6.1.4), with the goal dialog. */
+/** Yearly savings progress against the goal (docs/documentacion-tecnica.md §10), with the goal dialog. */
 @Component({
   selector: 'app-goal-progress-card',
   imports: [

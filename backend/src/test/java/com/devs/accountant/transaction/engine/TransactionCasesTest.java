@@ -23,10 +23,10 @@ import org.junit.jupiter.params.provider.MethodSource;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
-/** Runs every case of {@code docs/transaction-cases.json}, shared with the TypeScript engine. */
+/** Runs every case of {@code test-fixtures/transaction-cases.json}, shared with the TypeScript engine. */
 class TransactionCasesTest {
 
-    private static final Path CASES = Path.of("..", "docs", "transaction-cases.json");
+    private static final Path CASES = Path.of("..", "test-fixtures", "transaction-cases.json");
     private static final String DEFAULT_DATE = "2026-10-01T12:00:00";
 
     static Stream<Named<JsonNode>> cases() throws IOException {

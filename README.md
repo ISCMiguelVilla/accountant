@@ -1,512 +1,330 @@
 # Accountant
 
-Aplicación web de **finanzas personales**, multiusuario y de uso doméstico, pensada para ejecutarse **en local** (en tu propio equipo o en tu red de casa). Permite registrar cuentas (bancos, efectivo, tarjetas de crédito, inversiones, préstamos…) y los movimientos de dinero entre ellas, y a partir de eso muestra cuánto tienes, cuánto debes, cuánto ganas, cuánto gastas y si vas cumpliendo tu meta de ahorro anual.
+Aplicación web de **finanzas personales** para uso doméstico. Registras tus cuentas (bancos, efectivo, tarjetas de crédito, inversiones, préstamos…) y los movimientos de dinero entre ellas, y el sistema te muestra cuánto tienes, cuánto debes, cuánto ganas, cuánto gastas, qué viene en el calendario y si vas cumpliendo tu meta de ahorro anual.
 
-> **Estado del proyecto:** en construcción. Este README describe el sistema completo tal como está especificado en [`docs/PROMPT-accountant-v2.md`](docs/PROMPT-accountant-v2.md), que es la especificación de referencia. La implementación avanza por fases (ver [Hoja de ruta](#14-hoja-de-ruta-fases)). **Fases completadas:** 1 (andamiaje: perfiles, Flyway V1, errores `ProblemDetail`, tema PrimeNG, i18n ES/EN, layout, Spotless/ESLint/Prettier) 2 (autenticación JWT con único administrador, administración de usuarios y monedas, paginado/filtros/orden genéricos y tablas sincronizadas con la URL) 3 (cuentas con jerarquía y validación de ciclos, edición manual de saldo, borrado lógico, líneas de crédito con fechas de corte/pago calculadas por cron y job diario, semilla de desarrollo) y 4 (motor de transacciones del backend: reglas, lote atómico con bloqueo pesimista, transacciones pendientes con su aplicación posterior, cuentas temporales y tipo de operación para reportes, probado con los casos compartidos de `docs/transaction-cases.json`; el detalle está en [`docs/business-rules.md`](docs/business-rules.md)) y 5 (editor de lotes: motor TypeScript probado con los mismos casos compartidos y con la matriz de [`docs/transaction-rules.json`](docs/transaction-rules.json), borrador en el navegador con detección de saldos base cambiados, vista previa de saldos, resumen de movimientos y guardado atómico; listado de transacciones con filtros y acción "Aplicar"; últimas transacciones en el detalle de cuenta) y 6 (transacciones programadas: listado con filtros, formulario con las mismas reglas que una transacción y verificador de *cron*, activar/desactivar, saltar ejecución, borrado lógico y panel de programadas aplicables en el editor de lotes, que precarga el formulario y avanza la programada al guardar). Fase 7 (home, pestaña Resumen: cuentas en uso con totales de disponible y deuda, estado de resultados por año/mes/semana/día con vista de tabla, gastos del mes por concepto con "Comisiones", árbol de cuentas con porcentajes, y metas anuales con su progreso mensual; reportes calculados en Postgres por `applied_at`). En el árbol las cuentas DEBTOR no se suman al dinero disponible: su deuda se muestra aparte junto con el patrimonio neto. Fase 8 (home, pestaña Calendario: mes con semana desde el lunes, ingresos y gastos aplicados por día, fechas de corte y pago de cada tarjeta con su deuda, ejecuciones futuras de las programadas activas y panel de detalle del día con enlace al listado filtrado por fecha de aplicación). Fase 9 (Docker: imágenes multi-stage de backend y frontend, NGINX como único puerto expuesto con proxy a `/accountant/`, `docker-compose.yml` y `.env.example`).
+Accountant es una **reconstrucción** de un sistema de finanzas personales anterior: conserva la idea original (cuentas y transacciones) y la rehace con reglas de cálculo más estrictas, captura por lotes y reportes nuevos.
 
----
+![Inicio, pestaña Resumen](docs/images/02-inicio-resumen.png)
 
-## Tabla de contenido
-
-1. [¿Qué es?](#1-qué-es)
-2. [¿Qué hace?](#2-qué-hace)
-3. [Stack tecnológico](#3-stack-tecnológico)
-4. [Estructura del repositorio](#4-estructura-del-repositorio)
-5. [Configuración](#5-configuración)
-6. [Cómo levantar el proyecto](#6-cómo-levantar-el-proyecto)
-7. [Cómo funciona el sistema (conceptos clave)](#7-cómo-funciona-el-sistema-conceptos-clave)
-8. [Tipos de cuenta](#8-tipos-de-cuenta)
-9. [Tipos de transacción](#9-tipos-de-transacción)
-10. [Motor de cálculo y editor de lotes](#10-motor-de-cálculo-y-editor-de-lotes)
-11. [Opciones del sistema (pantallas)](#11-opciones-del-sistema-pantallas)
-12. [Flujos de uso](#12-flujos-de-uso)
-13. [API REST (resumen)](#13-api-rest-resumen)
-14. [Hoja de ruta (fases)](#14-hoja-de-ruta-fases)
+Este documento explica **cómo usar el sistema**. La instalación, el despliegue, la arquitectura y las reglas internas están en la [documentación técnica](docs/documentacion-tecnica.md).
 
 ---
 
-## 1. ¿Qué es?
+## Contenido
 
-**Accountant** es un "contador personal": un libro de cuentas digital basado en **cuentas** y **transacciones**.
+1. [Qué puedes hacer](#1-qué-puedes-hacer)
+2. [Primeros pasos](#2-primeros-pasos)
+3. [Conceptos básicos](#3-conceptos-básicos)
+4. [Tipos de cuenta](#4-tipos-de-cuenta)
+5. [Tipos de transacción](#5-tipos-de-transacción)
+6. [Cómo navegar por el sistema](#6-cómo-navegar-por-el-sistema)
+7. [Tareas frecuentes](#7-tareas-frecuentes)
+8. [Mensajes de error frecuentes](#8-mensajes-de-error-frecuentes)
 
-- Una **cuenta** representa un lugar o concepto por donde pasa el dinero: tu banco, tu cartera, tu tarjeta de crédito, tu inversión, tu empleador o el concepto "Comida".
-- Una **transacción** mueve dinero de una cuenta **origen** a una cuenta **destino** (o afecta solo al origen, como los intereses).
+---
 
-Con esa información el sistema mantiene los saldos al día, distingue lo que es **ingreso**, **gasto** o simple **movimiento interno**, y genera reportes: estado de resultados, gastos por concepto, calendario financiero y progreso contra metas de ahorro.
+## 1. Qué puedes hacer
 
-Características de diseño:
+- Llevar tus **cuentas** organizadas en grupos y sub-cuentas, con ícono, color y moneda.
+- Registrar **tarjetas de crédito y préstamos** con su límite, fecha de corte y fecha límite de pago.
+- Capturar **transacciones por lotes**: armas varias en un borrador, ves en vivo cómo quedan los saldos, revisas un resumen y guardas todo de una vez.
+- Marcar movimientos como **pendientes** (dinero en tránsito, cargos por reflejarse) y **aplicarlos** cuando se reflejen.
+- Definir **transacciones programadas** (renta, internet, nómina…) que el sistema te recuerda cuando vencen.
+- Consultar el **Inicio**: estado de resultados, gastos por concepto, cuentas en uso, resumen de cuentas, calendario financiero y meta de ahorro anual.
+- Usar la interfaz en **español o inglés** y en **modo claro u oscuro**.
 
-- **Multiusuario**: cada usuario solo ve y modifica sus propios datos. El primer usuario registrado es el único **administrador**.
-- **Local**: pensado para correr en una PC de casa con PostgreSQL instalado y, opcionalmente, Docker para la versión "productiva".
-- **Bilingüe**: interfaz en **español** (por defecto) e **inglés**, con cambio de idioma en caliente.
-- **Seguro con el dinero**: los montos nunca usan números de punto flotante y **ninguna cuenta puede quedar con saldo negativo**.
+Cada usuario solo ve sus propios datos. El primer usuario que se registra es el **administrador** (gestiona usuarios y monedas).
 
-## 2. ¿Qué hace?
+## 2. Primeros pasos
 
-- Registro e inicio de sesión de usuarios (JWT).
-- Administración de **cuentas** con jerarquía (cuentas y sub-cuentas), ícono, color, moneda ilustrativa y estado.
-- **Tarjetas de crédito / préstamos** con línea de crédito, fecha de corte y fecha límite de pago (calculadas con expresiones *cron* y actualizadas automáticamente).
-- Captura de **transacciones por lotes**: se arman varias transacciones en un borrador local, el sistema recalcula los saldos en vivo, se revisa un resumen y se guarda todo de una sola vez.
-- **Transacciones aplicadas por lado**: se indica si el monto ya se reflejó en el origen y en el destino (dinero en tránsito, retiros solicitados, cargos por reflejarse); el lado pendiente se "aplica" después.
-- **Transacciones programadas** (recurrentes) con expresión *cron*: renta, internet, nómina, etc.
-- **Home** con dos pestañas:
-  - **Resumen**: gráfica de ingresos/egresos/neto, gastos por concepto del mes, tarjetas de cuentas en uso, árbol de cuentas agrupadas y progreso de la meta anual de ahorro.
-  - **Calendario**: ingresos y egresos por día, fechas de corte/pago de tarjetas y próximas transacciones programadas.
-- **Metas anuales** de ahorro con semáforo mensual y anual.
-- **Administración** (solo ADMIN): usuarios y catálogo de monedas.
+1. Abre el sistema en tu navegador. Con la instalación en Docker la dirección es `http://localhost:8085` (ver la [documentación técnica](docs/documentacion-tecnica.md#6-despliegue-con-docker)).
+2. Si es la primera vez, entra a **Crear cuenta** y regístrate; después inicia sesión con tu usuario y contraseña.
 
-## 3. Stack tecnológico
+   ![Iniciar sesión](docs/images/01-iniciar-sesion.png)
 
-| Capa | Tecnologías |
+3. Crea tus cuentas. Un buen orden para empezar:
+   1. **Grupos** opcionales para organizar ("Bancos", "Inversiones", "Gastos").
+   2. Un **proveedor de ingresos** por cada fuente de ingreso (tu empleador, tus clientes).
+   3. Un **almacén** por cada banco y uno para el efectivo, con su **saldo actual** como saldo inicial.
+   4. Un **concepto de consumo** por cada tipo de gasto (Comida, Casa, Transporte, Servicios…).
+   5. Una cuenta **por pagar** por cada tarjeta o préstamo, con su deuda actual y su línea de crédito.
+   6. **Inversiones**, **negocios** y cuentas **por cobrar** si aplican.
+4. A partir de ahí registra tus movimientos con **Transacciones → Nuevo lote**.
+
+## 3. Conceptos básicos
+
+| Concepto | Qué significa |
 |---|---|
-| Backend | Java 21, Spring Boot 4.1.1 (Spring Framework 7, Hibernate 7, Jackson 3), Maven Wrapper, Spring Web MVC, Spring Data JPA, Spring Security + JWT (`jjwt`), Bean Validation, Actuator (solo `health`), `@Scheduled`, Flyway, Lombok, MapStruct, springdoc-openapi, Spotless |
-| Base de datos | PostgreSQL (instalado en el equipo, fuera de Docker) |
-| Frontend | Angular 21 (standalone, signals, control flow), PrimeNG 21 (tema Aura, primary `noir`, surface `slate`, modo oscuro), Tailwind CSS + `tailwindcss-primeui`, PrimeIcons, `p-chart` (Chart.js), `@ngx-translate`, `date-fns`, ESLint + Prettier |
-| Infraestructura | Docker + Docker Compose: NGINX (sirve el SPA y hace *reverse proxy*) + Spring Boot |
-| Pruebas | JUnit 5, AssertJ, Mockito, Spring Boot Test (backend); Vitest (frontend). Casos compartidos en `docs/transaction-cases.json` |
+| **Cuenta** | Un lugar o concepto por donde pasa el dinero: tu banco, tu cartera, tu tarjeta, tu inversión, tu empleador o el concepto "Comida". |
+| **Transacción** | Un movimiento de dinero de una cuenta **origen** a una cuenta **destino** (algunos tipos solo afectan al origen, como los intereses). |
+| **Saldo** | El dinero de la cuenta. En una cuenta por pagar es lo que debes y en una por cobrar es lo que te deben. **Nunca puede ser negativo.** |
+| **Monto** | La cantidad principal de la transacción (siempre mayor a 0). |
+| **Comisión** | Cargo, retención o impuesto asociado a la transacción (puede ser 0; algunos tipos no la permiten). |
+| **Tipo de operación** | Cómo cuenta la transacción en los reportes: **Ingreso**, **Gasto** o **Movimiento interno** (entre tus propias cuentas; de él solo cuenta la comisión como gasto). |
+| **Pendiente** | Una parte del movimiento todavía no se refleja (por ejemplo, una transferencia en tránsito). No cambia ese saldo ni cuenta en reportes hasta que la **apliques**. |
+| **Lote** | Grupo de transacciones que capturas juntas y se guardan todas o ninguna. |
 
-## 4. Estructura del repositorio
+Reglas que conviene tener presentes:
 
-```
-accountant/
-├── backend/                  # API REST — Spring Boot (Maven)
-│   └── src/main/java/com/devs/accountant/
-│       ├── shared/           # config, seguridad, errores (ProblemDetail), paginado/filtros, CurrentUser, zona horaria
-│       ├── auth/             # sign-in, sign-up, JWT
-│       ├── user/             # administración de usuarios
-│       ├── currency/         # catálogo de monedas
-│       ├── account/          # cuentas + jerarquía
-│       ├── credit/           # líneas de crédito (DEBTOR) + job de fechas
-│       ├── transaction/      # transacciones + motor de reglas (engine/)
-│       ├── schedule/         # transacciones programadas
-│       ├── goal/             # metas anuales
-│       ├── dashboard/        # reportes del home
-│       └── calendar/         # vista calendario
-├── frontend/                 # SPA — Angular + PrimeNG
-│   └── src/app/
-│       ├── core/             # auth, layout, manejo de errores, i18n, tema
-│       ├── shared/           # componentes, enums, modelos, pipes, utilidades de dinero
-│       └── features/         # auth, home, accounts, transactions, schedules, admin
-├── docker/                   # Dockerfiles (+ .dockerignore) y configuración de NGINX
-├── docs/
-│   ├── PROMPT-accountant-v2.md   # especificación completa del sistema
-│   ├── business-rules.md         # reglas del motor de transacciones (prosa + tablas)
-│   ├── transaction-cases.json    # casos de prueba compartidos back/front
-│   └── transaction-rules.json    # copia de GET /transactions/rules para los tests del front
-├── docker-compose.yml        # NGINX + backend (perfil prod)
-├── .env.example              # variables de docker compose (sin secretos reales)
-├── .gitignore                # único .gitignore para todo el monorepo
-└── README.md
-```
+- **El gasto cuenta cuando consumes.** Una compra con tarjeta es gasto el día de la compra; pagar la tarjeta es un movimiento interno, así el gasto no se cuenta dos veces.
+- **Las transacciones guardadas no se editan ni se borran.** El control está antes de guardar: en el editor de lotes y su resumen. Para corregir algo se registra otra transacción (o se ajusta el saldo de la cuenta, ver [Corregir un saldo](#corregir-un-saldo)).
+- **No se reescribe el pasado.** La fecha de una transacción no puede ser anterior a la última transacción guardada de sus cuentas.
+- **La moneda es ilustrativa.** Se muestra junto al saldo, pero no hay conversión entre monedas.
 
-Cada *feature* del backend sigue el mismo patrón: `XxxController`, `XxxService` + `XxxServiceImpl`, `XxxRepository`, entidad `Xxx`, `dto/` (`XxxRequest`, `XxxResponse`, `XxxFilter`) y `XxxMapper` (MapStruct).
+## 4. Tipos de cuenta
 
-## 5. Configuración
+| Tipo | En pantalla | Qué representa | Ejemplos | ¿Tiene saldo? | Puede contener |
+|---|---|---|---|---|---|
+| `GROUP` | Grupo | Agrupador para organizar; nunca participa en transacciones. | "Bancos", "Familia" | No | Cualquier tipo |
+| `SUPPLIER` | Proveedor de ingresos | De dónde viene tu dinero. | Empleador, cliente | No | Proveedores |
+| `STORAGE` | Almacén | Donde guardas dinero disponible. | Cuenta bancaria, efectivo, monedero | Sí | Almacenes, inversiones, cuentas por pagar |
+| `CONSUMER` | Consumo | Concepto de gasto. | Comida, casa, transporte | No | Conceptos de consumo |
+| `BUSINESS` | Negocio | Negocio propio. | Tienda, freelance | Sí | Almacenes, inversiones |
+| `INVESTMENT` | Inversión | Dinero invertido. | CETES, fondo, plazo fijo | Sí | Inversiones |
+| `CREDITOR` | Por cobrar | Dinero que **tú prestaste**; el saldo es lo que te deben. | Préstamo a un amigo | Sí | Cuentas por cobrar |
+| `DEBTOR` | Por pagar | Dinero que **tú debes**; el saldo es la deuda. Puede tener línea de crédito. | Tarjeta de crédito, préstamo personal | Sí | Cuentas por pagar |
 
-### 5.1 Generales
+Opciones y reglas de las cuentas:
 
-| Concepto | Valor |
-|---|---|
-| Context path del backend | `/accountant` (todos los endpoints cuelgan de ahí, p. ej. `/accountant/accounts`) |
-| URL del API en el frontend | `environment.apiUrl = '/accountant'` |
-| Zona horaria | `America/Mexico_City` (JVM, Hibernate `jdbc.time_zone` y formateo en el front) |
-| Dinero | `BigDecimal` / `NUMERIC(19,2)` en backend; **centavos enteros** en frontend |
-| Esquema de BD | Gestionado por **Flyway** (`ddl-auto=validate`) |
+- **Cuenta padre:** puedes colgar una cuenta de otra para formar grupos y sub-cuentas. Solo se ofrecen como padre las cuentas que aceptan ese tipo (columna "Puede contener") y que no son sub-cuentas de la misma cuenta, para evitar ciclos.
+- **Nombre:** no puede repetirse entre cuentas del mismo tipo.
+- **Cambio de tipo:** libre mientras la cuenta no tenga sub-cuentas ni transacciones. Si ya las tiene, solo puede cambiar entre Almacén e Inversión. Una cuenta con línea de crédito debe seguir siendo Por pagar.
+- **Saldo editable:** puedes corregir el saldo desde el formulario. El cambio se aplica directamente y **no genera transacción** (sirve para el saldo inicial o para ajustes).
+- **Incluir en el balance:** decide si la cuenta suma en "Cuentas en uso" y en los totales del Inicio.
+- **Estados:** **Activa**, **Deshabilitada** (no se puede usar en transacciones; se puede reactivar) y **Eliminada**. Solo se puede eliminar una cuenta con saldo 0 y sin sub-cuentas.
+- **Cuenta temporal** (solo Inversión y Negocio): cuando se aplica un **Retiro de inversión** que sale de ella, la cuenta se deshabilita sola (la inversión terminó), aunque le quede saldo. Puedes reactivarla después.
 
-### 5.2 Perfiles
+### Línea de crédito (cuentas por pagar)
 
-| Perfil | Uso | Detalles |
-|---|---|---|
-| `dev` (por defecto) | Desarrollo local | Puerto 8080, BD `accountant_dev`, CORS solo `http://localhost:4200`, Swagger UI habilitado, semilla de datos de prueba (`db/seed-dev`), logs SQL activables |
-| `prod` | Docker "producción local" | BD `accountant` en el host, Swagger deshabilitado, sin CORS (mismo origen vía NGINX) |
+Una cuenta Por pagar puede tener **línea de crédito**:
 
-### 5.3 Variables de entorno
+- **Límite de crédito:** ninguna compra, disposición o interés puede hacer que la deuda lo supere.
+- **Fecha de corte** y **fecha límite de pago:** se eligen como "día N de cada mes", "último día del mes" o una expresión avanzada; el formulario muestra las próximas 3 fechas.
+- El sistema mantiene la próxima fecha de corte y de pago al día, y muestra el **crédito disponible** y el **porcentaje de uso**.
 
-| Variable | Descripción | Default |
-|---|---|---|
-| `DB_URL` | JDBC de PostgreSQL | dev: `jdbc:postgresql://localhost:5432/accountant_dev` · prod: `jdbc:postgresql://host.docker.internal:5432/accountant` |
-| `DB_USERNAME` / `DB_PASSWORD` | Credenciales de la BD | solo en `application-dev.yml` hay valores por defecto |
-| `JWT_SECRET` | Secreto HS256 (mínimo 256 bits) | solo en dev |
-| `JWT_EXPIRATION_MINUTES` | Vigencia del token | `240` (4 h) |
-| `APP_PORT` | Puerto del host expuesto por NGINX (Docker) | `8085` |
+![Detalle de una tarjeta con línea de crédito](docs/images/06-cuenta-tarjeta-credito.png)
 
-En Docker las variables se leen de un archivo `.env` (no versionado) basado en `.env.example`. **Nunca** se versionan contraseñas reales.
+## 5. Tipos de transacción
 
-## 6. Cómo levantar el proyecto
+Notación: **A** = monto, **C** = comisión.
 
-### 6.1 Prerrequisitos
+### Qué cuentas usa cada tipo
 
-- **Java 21** (JDK). `JAVA_HOME` debe apuntar al JDK 21 (Maven Wrapper lo usa); con Java 8 el build falla.
-- **Node.js** `^20.19 || ^22.12 || >=24` + npm (probado con Node 24)
-- **PostgreSQL** instalado localmente y en ejecución (probado con PostgreSQL 18)
-- (Opcional) **Docker Desktop** para la versión productiva local
-
-### 6.2 Base de datos
-
-```sql
-CREATE DATABASE accountant_dev;   -- desarrollo
-CREATE DATABASE accountant;       -- producción local (Docker)
-```
-
-Flyway crea las tablas al arrancar el backend (`V1__init_schema.sql`, `V2__seed_currencies.sql` y, en dev, `db/seed-dev/R__dev_seed.sql` con un usuario y cuentas de ejemplo).
-
-**Usuario de prueba (solo perfil `dev`):** `demo` / `demo12345`. Tiene rol USER, así que el primer usuario que se registre sigue siendo el administrador. Incluye una cuenta de cada tipo, una tarjeta (Por pagar) con línea de crédito y una inversión temporal. La semilla no hace nada si el usuario `demo` ya existe.
-
-En dev, si no defines variables, el backend usa `postgres`/`postgres` en `localhost:5432/accountant_dev`. Para otras credenciales copia `backend/application-local.yml.example` a `backend/application-local.yml` (ignorado por git) o exporta `DB_USERNAME` y `DB_PASSWORD` (y opcionalmente `DB_URL`, `JWT_SECRET`, `SHOW_SQL=true`).
-
-### 6.3 Desarrollo
-
-Backend (puerto 8080, perfil `dev`):
-
-```bash
-cd backend
-./mvnw spring-boot:run
-```
-
-En Windows (PowerShell/CMD) usar `mvnw.cmd spring-boot:run`. Swagger UI queda disponible en `http://localhost:8080/accountant/swagger-ui.html`.
-
-Frontend (puerto 4200, con *proxy* `/accountant` → `http://localhost:8080`):
-
-```bash
-cd frontend
-npm install
-npm start
-```
-
-Abrir `http://localhost:4200`. El **primer usuario** que se registre será el administrador.
-
-Pruebas, formato y lint del backend (`verify` falla si el código no cumple el formato de Spotless; `spotless:apply` lo corrige):
-
-```bash
-cd backend
-./mvnw verify
-```
-
-```bash
-cd backend
-./mvnw spotless:apply
-```
-
-Pruebas, lint y formato del frontend (Vitest, ESLint con `angular-eslint`, Prettier):
-
-```bash
-cd frontend
-npm test
-```
-
-```bash
-cd frontend
-npm run lint
-```
-
-```bash
-cd frontend
-npm run format
-```
-
-### 6.4 "Producción" local con Docker
-
-1. Crea la base de datos en el PostgreSQL del equipo (Flyway crea las tablas al arrancar; en `prod` no se carga la semilla de desarrollo, el primer usuario que se registre será el administrador):
-
-   ```bash
-   psql -h localhost -U postgres -c "CREATE DATABASE accountant"
-   ```
-
-2. Crea tu `.env` a partir del ejemplo y llena `DB_USERNAME`, `DB_PASSWORD` y un `JWT_SECRET` propio (base64 de al menos 256 bits, p. ej. `openssl rand -base64 32`). El `.env` no se versiona.
-
-   ```bash
-   cp .env.example .env
-   ```
-
-3. Construye y levanta (requiere Docker Desktop corriendo):
-
-   ```bash
-   docker compose up -d --build
-   ```
-
-4. Abre `http://localhost:8085` (o el `APP_PORT` que definiste). Logs: `docker compose logs -f backend`; detener: `docker compose down`.
-
-Archivos: [`docker-compose.yml`](docker-compose.yml), [`docker/backend.Dockerfile`](docker/backend.Dockerfile), [`docker/frontend.Dockerfile`](docker/frontend.Dockerfile), [`docker/nginx/default.conf`](docker/nginx/default.conf) y [`.env.example`](.env.example).
-
-- `frontend`: imagen multi-stage (`node:22-alpine` → `ng build` → `nginx:alpine`). NGINX sirve el SPA (con *fallback* a `index.html`), cachea los archivos con hash, no cachea `index.html` ni las traducciones, agrega cabeceras de seguridad y redirige `/accountant/` al backend. La configuración de NGINX va dentro de la imagen.
-- `backend`: imagen multi-stage (`maven:3-eclipse-temurin-21` → `eclipse-temurin:21-jre`) con perfil `prod`, usuario sin privilegios y zona horaria `America/Mexico_City`. **No expone puertos al host**. Los tests y Spotless corren en el build normal (`./mvnw verify`), no dentro de la imagen.
-- **Solo NGINX expone puerto**: `http://localhost:${APP_PORT:-8085}`.
-- En `prod`, Swagger está deshabilitado y no hay CORS (mismo origen vía NGINX); el *health check* queda en `/accountant/actuator/health`.
-- Los `.dockerignore` (junto a cada Dockerfile) dejan fuera `application-local.yml`, `node_modules` y los builds locales.
-- El backend se conecta al PostgreSQL del equipo vía `host.docker.internal`. Con **Docker Desktop** (Windows/macOS) las conexiones llegan como locales y basta con la configuración por defecto (`127.0.0.1/32` en `pg_hba.conf`); comprobado en Windows. En Docker sobre Linux hay que permitir la red de Docker:
-  - `postgresql.conf`: `listen_addresses = '*'` (o la IP de la interfaz de Docker).
-  - `pg_hba.conf`: agregar una línea para la red de Docker, p. ej. `host accountant all 172.16.0.0/12 scram-sha-256`.
-  - Reiniciar el servicio de PostgreSQL.
-
-## 7. Cómo funciona el sistema (conceptos clave)
-
-| Concepto | Significado |
-|---|---|
-| **Saldo (`balance`)** | Dinero que hay en la cuenta (o, en DEBTOR, lo que debes; en CREDITOR, lo que te deben). Solo existe en tipos "con saldo". **Nunca puede ser negativo.** |
-| **Monto (`A`)** | Cantidad principal de la transacción. Siempre > 0. |
-| **Fee (`F`)** | Comisión, retención o cargo asociado. ≥ 0. Algunos tipos no lo permiten. |
-| **Tipo de operación** | `ADDITION` (ingreso), `SUBTRACTION` (gasto) o `NEUTER` (movimiento interno: solo su comisión cuenta como gasto). |
-| **Monto para reportes** | Se calcula al consultar, no se guarda: ingreso `A − F`, gasto `A + F`; de un movimiento interno solo cuenta `F` como gasto. |
-| **Aplicada (`applied`)** | Indica si el efecto pendiente ya se reflejó. Una transacción pendiente no cambia ese saldo hasta que se aplica; `applied_at` guarda cuándo se aplicó. |
-| **Lote** | Conjunto de transacciones capturadas y guardadas juntas, de forma atómica. |
-
-Principios:
-
-1. **El gasto se reconoce cuando consumes.** Una compra con tarjeta (EXPENSE Visa → Comida o DEBT Visa → Comida) es gasto el día de la compra; el pago de la tarjeta (PAYMENT) y un préstamo en efectivo (DEBT → Almacén) son movimientos internos, así no se cuenta el gasto dos veces.
-2. **Los saldos solo suman y restan montos.** No hay acumulados auxiliares: cada transacción suma o resta su monto (y comisión) en las cuentas; el efecto pendiente, solo al aplicarse.
-3. **Las transacciones guardadas no se editan ni se anulan.** El control está antes de guardar: el editor de lotes y su resumen.
-4. **No se reescribe el historial.** La fecha de una transacción no puede ser anterior a la última transacción guardada de las cuentas involucradas.
-5. **El backend es la fuente de verdad.** El frontend replica el cálculo solo para dar retroalimentación inmediata; el backend siempre vuelve a validar.
-6. **Los reportes usan la fecha de aplicación (`applied_at`)**. Lo pendiente no cuenta todavía.
-
-## 8. Tipos de cuenta
-
-| Tipo | Qué representa | Ejemplos | ¿Saldo? | Sub-cuentas permitidas |
+| Tipo | En pantalla | Para qué sirve | Origen | Destino |
 |---|---|---|---|---|
-| `GROUP` | Agrupador para organizar. Nunca participa en transacciones. | "Bancos", "Familia" | No | Cualquier tipo |
-| `SUPPLIER` | Fuente de ingresos. | Empleador, cliente | No | SUPPLIER |
-| `STORAGE` | Donde guardas dinero disponible. | Cuenta bancaria, efectivo, monedero | Sí | STORAGE, INVESTMENT, DEBTOR |
-| `CONSUMER` | Concepto de gasto. | Comida, casa, transporte | No | CONSUMER |
-| `BUSINESS` | Negocio propio. | Tienda, freelance | Sí | STORAGE, INVESTMENT |
-| `INVESTMENT` | Inversión. | CETES, fondo, plazo fijo | Sí | INVESTMENT |
-| `CREDITOR` | Cuenta por cobrar: dinero que **tú prestaste**. Saldo = lo que te deben. | Préstamo a un amigo | Sí | CREDITOR |
-| `DEBTOR` | Cuenta por pagar: dinero que **tú debes**. Saldo = deuda. Puede tener línea de crédito. | Tarjeta de crédito, préstamo personal | Sí | DEBTOR |
+| `INCOME` | Ingreso | Sueldo, cobro a un cliente | Proveedor de ingresos | Almacén |
+| `EXPENSE` | Gasto | Consumo con dinero propio o con tarjeta | Almacén o Por pagar | Consumo |
+| `TRANSFER` | Transferencia | Mover dinero entre tus almacenes | Almacén | Almacén |
+| `INVEST` | Inversión | Meter dinero a una inversión o negocio | Almacén o Inversión | Inversión o Negocio |
+| `PROFIT` | Retiro de inversión | Sacar los recursos de una inversión o negocio | Inversión o Negocio | Almacén o Inversión |
+| `DIVIDEND` | Rendimiento | Lo que te paga una inversión | Inversión, Negocio, Almacén o Por cobrar | Opcional, de los mismos tipos |
+| `INTEREST` | Interés o cargo | Interés, comisión o cargo en tu contra | Inversión, Negocio, Almacén o Por pagar | Ninguno |
+| `BORROW` | Préstamo otorgado | Prestarle dinero a alguien | Almacén | Por cobrar |
+| `COLLECTION` | Cobro de préstamo | Cobrar un préstamo que hiciste | Por cobrar | Almacén |
+| `DEBT` | Deuda | Préstamo en efectivo o compra a crédito | Por pagar | Almacén o Consumo |
+| `PAYMENT` | Pago de deuda | Pagar una tarjeta o préstamo | Almacén | Por pagar |
 
-Reglas de cuentas:
+El origen y el destino siempre deben ser cuentas distintas y activas. Los selectores del formulario solo muestran las cuentas válidas para el tipo elegido.
 
-- **Saldo**: GROUP, SUPPLIER y CONSUMER no tienen saldo. Los demás, saldo ≥ 0.
-- **Nombre único** por usuario y tipo.
-- **Jerarquía**: el padre debe aceptar el tipo hijo (tabla anterior) y **no se permiten ciclos** (una cuenta no puede colgar de sí misma ni de ningún descendiente).
-- **Cambio de tipo**: libre si la cuenta no tiene sub-cuentas ni transacciones; si las tiene, solo entre **STORAGE e INVESTMENT**. Además, el nuevo tipo debe aceptar las sub-cuentas existentes, una cuenta con línea de crédito debe seguir siendo DEBTOR y, para cambiar a un tipo sin saldo, el saldo debe ser 0.
-- **Actualización**: al editar una cuenta solo se modifican los datos enviados; el resto se conserva y el identificador nunca cambia.
-- **Edición manual de saldo**: se puede corregir el saldo desde el formulario; se sobrescribe directamente **sin generar transacción** (útil para ajustes o saldo inicial).
-- **Estados**: `ACTIVE`, `DISABLED` (no usable, reactivable) y `DELETED` (borrado lógico; solo si el saldo es 0 y no tiene sub-cuentas activas).
-- **Incluir en balance**: decide si la cuenta suma en las tarjetas y totales del home.
-- **Cuentas temporales** (solo INVESTMENT y BUSINESS): al aplicarse un `PROFIT` que sale de ella, la cuenta se **deshabilita automáticamente** (la inversión terminó), aunque quede saldo remanente. Se puede reactivar manualmente.
-- **Moneda**: es **ilustrativa** (se muestra junto al saldo). No hay conversión ni validación de monedas entre cuentas.
+### Cómo cambian los saldos
 
-### 8.1 Crédito (solo DEBTOR)
-
-Una cuenta DEBTOR puede tener asociada una **línea de crédito**:
-
-- **Límite de crédito**: ninguna compra, disposición o interés puede hacer que la deuda supere el límite (`CREDIT_LIMIT_EXCEEDED`).
-- **Fecha de corte** y **fecha límite de pago**: se definen con expresiones *cron*. El formulario ofrece un modo simple ("día N de cada mes" / "último día del mes") y un modo avanzado, y muestra las próximas 3 fechas.
-- El sistema guarda la **próxima** fecha de corte y de pago y las avanza solo con un job diario (00:05) y al arrancar la aplicación.
-- Datos derivados: **crédito disponible** = límite − saldo, y **porcentaje de uso**.
-
-## 9. Tipos de transacción
-
-Notación: `A` = monto, `F` = fee (comisión o impuesto). El detalle completo está en [`docs/business-rules.md`](docs/business-rules.md).
-
-### 9.1 Cuentas permitidas por tipo
-
-| Tipo | Significado | Origen | Destino |
+| Tipo | Qué se valida | Origen | Destino |
 |---|---|---|---|
-| `INCOME` | Ingreso (sueldo, cobro a cliente) | SUPPLIER | STORAGE (obligatorio) |
-| `EXPENSE` | Gasto, con dinero propio o con tarjeta | STORAGE, DEBTOR | CONSUMER (obligatorio) |
-| `TRANSFER` | Mover dinero entre cuentas propias | STORAGE | STORAGE (obligatorio) |
-| `INVEST` | Invertir | STORAGE, INVESTMENT | INVESTMENT, BUSINESS (obligatorio) |
-| `PROFIT` | Retirar los recursos de una inversión o negocio | INVESTMENT, BUSINESS | STORAGE, INVESTMENT (obligatorio) |
-| `DIVIDEND` | Rendimiento: la inversión te da dinero | INVESTMENT, BUSINESS, STORAGE, CREDITOR | Las mismas (opcional) |
-| `INTEREST` | Interés o cargo en contra | INVESTMENT, BUSINESS, STORAGE, DEBTOR | — (prohibido) |
-| `BORROW` | Prestar dinero a alguien | STORAGE | CREDITOR (obligatorio) |
-| `COLLECTION` | Cobrar un préstamo que hiciste | CREDITOR | STORAGE (obligatorio) |
-| `DEBT` | Endeudarte: préstamo en efectivo o compra a crédito | DEBTOR | STORAGE o CONSUMER (obligatorio) |
-| `PAYMENT` | Pagar una deuda | STORAGE | DEBTOR (obligatorio) |
+| Ingreso | La comisión es menor que el monto | — | `+ (A − C)` |
+| Gasto desde Almacén | Hay fondos para `A + C` | `− (A + C)` | — |
+| Gasto desde Por pagar | No se rebasa el límite de crédito | La deuda crece `A + C` | — |
+| Transferencia, Inversión, Retiro de inversión | Hay fondos para `A`; la comisión es menor que el monto | `− A` | `+ (A − C)` |
+| Rendimiento | La comisión es menor que el monto | Sin destino: `+ (A − C)` | Con destino: `+ (A − C)` |
+| Interés (no Por pagar) | Hay fondos; sin comisión | `− A` | — |
+| Interés sobre Por pagar | No se rebasa el límite; sin comisión | La deuda crece `A` | — |
+| Préstamo otorgado | Hay fondos; sin comisión | `− A` | `+ A` |
+| Cobro de préstamo | No se cobra más de lo que te deben; sin comisión | `− A` | `+ A` |
+| Deuda → Almacén | No se rebasa el límite; la comisión es menor que el monto | La deuda crece `A` | `+ (A − C)` |
+| Deuda → Consumo | No se rebasa el límite; sin comisión | La deuda crece `A` | — |
+| Pago de deuda | Hay fondos para `A + C`; no se paga más de lo que se debe | `− (A + C)` | La deuda baja `A` |
 
-Siempre: origen ≠ destino, ambas cuentas activas y del usuario.
+### Movimientos pendientes
 
-### 9.2 Efecto sobre los saldos
+Por defecto todo se aplica al guardar. Solo estos tipos pueden quedar **pendientes**:
 
-*(pendiente)* = ese efecto solo ocurre cuando la transacción está aplicada.
-
-| Tipo | Validaciones | Origen | Destino |
-|---|---|---|---|
-| INCOME | `F < A` | — (sin saldo) | `+ (A − F)` |
-| EXPENSE desde STORAGE | fondos ≥ `A + F` | `− (A + F)` *(pendiente)* | — (sin saldo) |
-| EXPENSE desde DEBTOR | límite de crédito | `+ (A + F)` *(pendiente)* | — (sin saldo) |
-| TRANSFER / INVEST / PROFIT | fondos ≥ `A`; `F < A` | `− A` (inmediato) | `+ (A − F)` *(pendiente)* |
-| DIVIDEND | `F < A` | sin destino: `+ (A − F)` | con destino: `+ (A − F)` |
-| INTEREST (no DEBTOR) | fondos ≥ `A`; sin fee | `− A` | — |
-| INTEREST (DEBTOR) | límite de crédito; sin fee | `+ A` la deuda crece | — |
-| BORROW | fondos ≥ `A`; sin fee | `− A` | `+ A` |
-| COLLECTION | `A` ≤ lo que te deben; sin fee | `− A` | `+ A` |
-| DEBT → STORAGE | límite de crédito; `F < A` | `+ A` | `+ (A − F)` |
-| DEBT → CONSUMER | límite de crédito; sin fee | `+ A` | — (sin saldo) |
-| PAYMENT | fondos ≥ `A + F`; `A` ≤ deuda | `− (A + F)` | `− A` |
-
-### 9.3 Transacciones pendientes
-
-Cada transacción tiene un solo indicador **aplicada** (por defecto sí). Solo pueden quedar pendientes:
-
-| Tipo | Queda pendiente | Se aplica de inmediato |
+| Tipo | Qué queda pendiente | Qué se aplica de inmediato |
 |---|---|---|
-| EXPENSE (desde STORAGE o DEBTOR) | el cargo al origen | — |
-| TRANSFER, INVEST, PROFIT | el abono al destino | el cargo al origen |
-| Los demás (incluido PAYMENT) | — | todo |
+| Gasto | El cargo a la cuenta origen | — |
+| Transferencia, Inversión, Retiro de inversión | El abono a la cuenta destino | El cargo a la cuenta origen |
 
-Ejemplo: un retiro de una SOFIPO se solicita hoy y se refleja horas después. Se registra un PROFIT pendiente: el origen se descuenta en ese momento y el destino no cambia; cuando el dinero llega, **Aplicar** suma en el destino. Los fondos o el límite de crédito del efecto pendiente se validan al aplicarlo.
+Ejemplo: pides hoy un retiro de una inversión que llega mañana. Lo registras como Retiro de inversión **pendiente**: el origen se descuenta en ese momento y el destino no cambia. Cuando el dinero llegue, usa **Aplicar** y se suma en el destino. Al aplicar se vuelven a validar los fondos o el límite de crédito.
 
-### 9.4 ¿Cuenta como ingreso o gasto?
+### Cómo cuenta en los reportes
 
-| Tipo / variante | Tipo de operación | Cuenta en reportes |
+| Tipo de operación | Tipos | Qué cuenta |
 |---|---|---|
-| INCOME, DIVIDEND | ADDITION | ingreso `A − F` |
-| EXPENSE (desde STORAGE o DEBTOR), INTEREST, DEBT → CONSUMER | SUBTRACTION | gasto `A + F` |
-| DEBT → STORAGE, PAYMENT, TRANSFER, INVEST, PROFIT, BORROW, COLLECTION | NEUTER | solo `F` como gasto |
+| **Ingreso** | Ingreso, Rendimiento | `A − C` como ingreso |
+| **Gasto** | Gasto (de Almacén o con tarjeta), Interés, Deuda → Consumo | `A + C` como gasto |
+| **Movimiento interno** | Transferencia, Inversión, Retiro de inversión, Préstamo otorgado, Cobro de préstamo, Deuda → Almacén, Pago de deuda | Solo `C`, como gasto en el concepto "Comisiones" |
 
-Las comisiones de las NEUTER aparecen en un concepto "Comisiones" que solo existe en el reporte (no hay cuenta en la base de datos). Todo cuenta en la fecha `applied_at`.
+Los reportes usan la **fecha en que el movimiento se aplicó**; lo pendiente no cuenta todavía. Algunos ejemplos:
 
 | Escenario | Transacciones | Ingreso | Gasto | Neto |
 |---|---|---|---|---|
-| Préstamo en efectivo usado y pagado | DEBT → STORAGE 10,000 → EXPENSE 10,000 → PAYMENT 10,000 | 0 | 10,000 | −10,000 |
-| Préstamo en efectivo devuelto sin usar | DEBT → STORAGE 10,000 → PAYMENT 10,000 | 0 | 0 | 0 |
-| Compra con TDC y pago | EXPENSE Visa → Comida 10,000 → PAYMENT 10,000 | 0 | 10,000 | −10,000 |
-| Compra a crédito y pago | DEBT Visa → Comida 10,000 → PAYMENT 10,000 | 0 | 10,000 | −10,000 |
-| Interés de la TDC y pago | INTEREST Visa 500 → PAYMENT 500 | 0 | 500 | −500 |
-| Pago con comisión | PAYMENT 10,000 con comisión 50 | 0 | 50 | −50 |
+| Compra con tarjeta y su pago | Gasto Visa → Comida 10,000, luego Pago de deuda 10,000 | 0 | 10,000 | −10,000 |
+| Préstamo en efectivo usado y pagado | Deuda → Banco 10,000, Gasto 10,000, Pago de deuda 10,000 | 0 | 10,000 | −10,000 |
+| Préstamo en efectivo devuelto sin usar | Deuda → Banco 10,000, Pago de deuda 10,000 | 0 | 0 | 0 |
+| Interés de la tarjeta y su pago | Interés Visa 500, Pago de deuda 500 | 0 | 500 | −500 |
+| Pago con comisión | Pago de deuda 10,000 con comisión 50 | 0 | 50 | −50 |
 
-### 9.5 Aplicar transacciones pendientes
-
-`PATCH /transactions/{id}/apply` aplica el efecto pendiente: valida fondos o límite de crédito, guarda `applied_at` y sobrescribe los saldos antes/después de la cuenta afectada con los de ese momento. Un PROFIT de una cuenta temporal la deshabilita al aplicarse. Aplicar dos veces no tiene efecto.
-
-### 9.6 Errores de negocio
-
-| Código | Cuándo ocurre |
-|---|---|
-| `INSUFFICIENT_FUNDS` | El origen no tiene saldo suficiente |
-| `CREDIT_LIMIT_EXCEEDED` | La deuda superaría el límite de crédito |
-| `SENSELESS_TRANSACTION` | Pagar más de lo que se debe o cobrar más de lo que te deben |
-| `DATE_BEFORE_LAST_TRANSACTION` | La fecha es anterior a la última transacción guardada de alguna cuenta |
-| `ACCOUNT_DISABLED` | Se usa una cuenta deshabilitada (p. ej. temporal tras su PROFIT) |
-| `ACCOUNT_NOT_DELETABLE` | Borrar una cuenta con saldo o con sub-cuentas |
-| `TRANSACTION_NOT_SUPPORTED` | Aplicar una transacción cuyo tipo no admite pendiente |
-| `CONFLICT` | Una cuenta cambió mientras se guardaba el lote |
-
-## 10. Motor de cálculo y editor de lotes
-
-El corazón de la aplicación es el **editor de lotes**:
-
-1. Al abrirlo se cargan las reglas (`GET /transactions/rules`), las cuentas usables con su saldo actual y las transacciones programadas aplicables.
-2. Cada transacción que agregas, editas o eliminas **recalcula todo el lote desde cero**: se parte de los saldos reales, se ordena por fecha y se aplica una por una. Si alguna falla, el cambio se rechaza y se indica cuál falló y por qué.
-3. El formulario muestra una **vista previa en vivo** del saldo de origen y destino antes y después, el crédito disponible en tarjetas, y resalta en rojo los resultados inválidos.
-4. El borrador se guarda en el navegador (`localStorage`), así que sobrevive a recargas. Si los saldos reales cambiaron mientras tanto, se avisa y se recalcula.
-   El motor del navegador no duplica la matriz de reglas: la recibe de `GET /transactions/rules`. Sus pruebas usan [`docs/transaction-rules.json`](docs/transaction-rules.json), una copia de ese endpoint que una prueba del backend mantiene idéntica (se regenera con `./mvnw test -Dtest=TransactionServiceImplTest -Drules.fixture.update=true`).
-5. **Revisar** abre un resumen: cuentas afectadas (saldo actual → proyectado), totales de ingresos/gastos/neto, transacciones pendientes, cuentas temporales que se deshabilitarán y programadas incluidas.
-6. **Guardar** (solo desde el resumen) envía el lote a `POST /transactions/batch`. El backend lo procesa en **una sola transacción de base de datos** con bloqueo de cuentas: o se guardan todas, o ninguna.
-
-### 10.1 Transacciones programadas
-
-- Tienen tipo, cuentas, monto, fee, descripción y una expresión *cron* (6 campos de Spring), p. ej. `0 0 0 1 * *` = día 1 de cada mes.
-- Siguen **exactamente las mismas reglas** que las transacciones normales.
-- Las que vencen hasta mañana aparecen como **aplicables** en el editor de lotes; "Aplicar" precarga el formulario. Al guardarse, la programada avanza a su siguiente ejecución.
-- Se pueden activar/desactivar, **saltar** una ejecución, editar o borrar (borrado lógico). Sin "próxima ejecución" explícita, se usa la primera ocurrencia del *cron* desde hoy (hoy incluido); al cambiar el *cron* se recalcula.
-- Sus próximas ocurrencias se muestran en el calendario.
-
-## 11. Opciones del sistema (pantallas)
-
-| Pantalla | Qué ofrece |
-|---|---|
-| **Sign-in / Sign-up** | Registro e inicio de sesión. El primer registro es ADMIN. |
-| **Home › Resumen** | Gráfica de **estado de resultados** (ingresos, egresos y neto por año/mes/semana/día con ventana ajustable); **dona de gastos por concepto** por mes; **tarjetas de cuentas en uso** con total general y uso de crédito; **árbol de cuentas agrupadas** con porcentajes; **progreso anual vs meta** con semáforo por mes y por año. |
-| **Home › Calendario** | Vista mensual (semana inicia en lunes) con ingresos (verde) y egresos (rojo) por día, fechas de corte y de pago de tarjetas, y programadas futuras. Al dar clic en un día se ve el detalle. |
-| **Cuentas** | Listado con filtros, orden y paginado (el estado se refleja en la URL). Formulario de alta/edición con sección de crédito para DEBTOR. Detalle con datos, crédito, sub-cuentas y últimas transacciones. |
-| **Transacciones** | Listado con filtros (tipo, cuenta, fechas, montos, aplicada, lote…), acción "aplicar" en pendientes y botón **Nuevo lote**. |
-| **Programadas** | Listado y formulario con verificador de *cron* y próximas ejecuciones. |
-| **Metas** | Se administran desde el widget de progreso del home (una meta por año). |
-| **Admin** (solo ADMIN) | Usuarios (habilitar/deshabilitar) y catálogo de monedas. |
-| **Barra superior** | Idioma (ES/EN), modo claro/oscuro y menú de usuario. |
-
-## 12. Flujos de uso
-
-### 12.1 Primeros pasos
-
-1. Regístrate (si eres el primero, serás ADMIN) e inicia sesión.
-2. Crea tus cuentas (ver 12.2). Te recomendamos empezar por:
-   - **GROUP** opcionales para organizar ("Bancos", "Inversiones", "Gastos").
-   - **SUPPLIER** para cada fuente de ingreso (tu empleador).
-   - **STORAGE** para cada banco y el efectivo, con su **saldo actual** como saldo inicial.
-   - **CONSUMER** para tus conceptos de gasto (Comida, Casa, Transporte, Servicios…).
-   - **DEBTOR** para cada tarjeta o préstamo, con su deuda actual y línea de crédito.
-   - **INVESTMENT / BUSINESS / CREDITOR** si aplican.
-3. A partir de ahí, registra tus movimientos con el editor de lotes (ver 12.3).
-
-### 12.2 Agregar una cuenta
-
-1. Menú **Cuentas** → **Nueva cuenta** (o la tarjeta "Nueva cuenta" del home).
-2. Captura **nombre** y **tipo**.
-3. (Opcional) Elige una **cuenta padre**: solo aparecen las que aceptan ese tipo y no generan ciclos.
-4. Elige la **moneda** (ilustrativa), **ícono** y **color**.
-5. Si el tipo tiene saldo, captura el **saldo inicial**.
-6. Marca **Incluir en balance** si debe sumar en el home, y **Temporal** si es una inversión/negocio que se cerrará con su PROFIT.
-7. Si es DEBTOR con tarjeta/préstamo, llena la sección **Crédito**: límite, día de corte y día de pago (modo simple o *cron*); verifica las próximas fechas mostradas.
-8. Guarda. La cuenta aparece en el listado y, si tiene saldo > 0 y está incluida en el balance, en las tarjetas del home.
-
-### 12.3 Agregar transacciones
-
-1. Menú **Transacciones** → **Nuevo lote**.
-2. En el formulario:
-   1. Elige el **tipo** de transacción.
-   2. Elige **origen** y **destino**: los selectores solo muestran cuentas válidas para ese tipo, con su saldo proyectado.
-   3. Captura **monto** y, si aplica, **fee** (o usa "usar saldo total").
-   4. Elige la **fecha** (no puede ser anterior a la última transacción guardada de esas cuentas).
-   5. Si el tipo lo permite (EXPENSE, TRANSFER, INVEST, PROFIT), indica si el movimiento **ya se reflejó** o queda pendiente.
-   6. La **descripción** se autogenera ("Gasto Banco → Comida"); puedes editarla.
-   7. Revisa la vista previa de saldos antes → después y presiona **Agregar**.
-3. Repite para todas las transacciones del lote. La tabla muestra cada una con sus saldos antes/después y su tipo de operación. Puedes editar o eliminar cualquiera; todo se recalcula.
-4. (Opcional) Desde el panel de **programadas aplicables**, usa **Aplicar** para agregar una recurrente.
-5. Presiona **Revisar**, verifica cuentas afectadas, totales y avisos.
-6. Presiona **Guardar**. Si todo es válido, el lote se guarda completo y el borrador se limpia; si algo falla, no se guarda nada y se indica qué transacción falló.
-7. Para transacciones **pendientes**, usa **Aplicar** en el listado de transacciones o en el detalle de la cuenta cuando el movimiento se refleje.
-
-Ejemplos rápidos:
+### ¿Qué tipo uso?
 
 | Quiero registrar… | Tipo | Origen → Destino |
 |---|---|---|
-| Me pagaron la quincena | INCOME | Empleador → Banco |
-| Pagué el súper con débito | EXPENSE | Banco → Comida |
-| Pagué el súper con tarjeta de crédito | EXPENSE (o DEBT) | Visa → Comida |
-| Pagué la tarjeta | PAYMENT | Banco → Visa |
-| Retiré efectivo del cajero | TRANSFER | Banco → Efectivo |
-| Metí dinero a CETES | INVEST | Banco → CETES |
-| Me dieron rendimientos | DIVIDEND | CETES (→ Banco opcional) |
-| Retiré mi inversión | PROFIT | CETES → Banco |
-| Me cobraron comisión bancaria | INTEREST | Banco |
-| Le presté a un amigo / me pagó | BORROW / COLLECTION | Banco → Préstamo Juan / Préstamo Juan → Banco |
-| Saqué un préstamo personal | DEBT | Préstamo → Banco |
+| Me pagaron la quincena | Ingreso | Empleador → Banco |
+| Pagué el súper con débito | Gasto | Banco → Comida |
+| Pagué el súper con tarjeta de crédito | Gasto (o Deuda) | Visa → Comida |
+| Pagué la tarjeta | Pago de deuda | Banco → Visa |
+| Retiré efectivo del cajero | Transferencia | Banco → Efectivo |
+| Metí dinero a CETES | Inversión | Banco → CETES |
+| Me dieron rendimientos | Rendimiento | CETES (→ Banco, opcional) |
+| Retiré mi inversión | Retiro de inversión | CETES → Banco |
+| Me cobraron una comisión bancaria | Interés o cargo | Banco |
+| Le presté a un amigo / me pagó | Préstamo otorgado / Cobro de préstamo | Banco → Préstamo a Juan / Préstamo a Juan → Banco |
+| Saqué un préstamo personal | Deuda | Préstamo → Banco |
 
-## 13. API REST (resumen)
+## 6. Cómo navegar por el sistema
 
-Todas las rutas son relativas a `/accountant`, en JSON, y requieren `Authorization: Bearer <jwt>` excepto `/auth/**` y `/actuator/health`. Los listados son paginados (`page`, `size`, `sort`, filtros) y los errores siguen `ProblemDetail` (RFC 7807) con un `code`.
+### Barra superior y menú
 
-```
-POST   /auth/sign-in | /auth/sign-up
-GET    /accounts | /accounts/options | /accounts/in-use | /accounts/{id} | /accounts/{id}/transactions
-POST   /accounts      PUT/DELETE /accounts/{id}      PUT/DELETE /accounts/{id}/credit
-GET    /transactions | /transactions/{id} | /transactions/rules
-POST   /transactions/batch       PATCH /transactions/{id}/apply
-GET    /schedules | /schedules/applicable | /schedules/{id} | /schedules/cron/check
-POST   /schedules     PUT /schedules/{id}     PATCH /schedules/{id}/status | /schedules/{id}/skip     DELETE /schedules/{id}
-GET    /goals         PUT/DELETE /goals/{year}
-GET    /dashboard/income-statement | /dashboard/expenses-by-concept | /dashboard/summary | /dashboard/progress
-GET    /calendar?from=&to=
-GET    /currencies/options
-       /admin/users/**  /admin/currencies/**   (solo ADMIN)
-PATCH  /me/language
-```
+- **Accountant** (a la izquierda) te lleva al Inicio. El botón **☰** junto al nombre muestra u oculta el menú lateral; en pantallas chicas abre el menú deslizable.
+- A la derecha están el **idioma** (Español / English), el botón de **modo claro / oscuro** y tu **usuario** (cerrar sesión).
+- El **menú lateral** lleva a Inicio, Cuentas, Transacciones y Programadas; los administradores ven además **Usuarios** y **Monedas**.
+- Debajo de la barra está la **ruta** de la pantalla actual (por ejemplo, Cuentas › Detalle › Editar).
 
-La documentación interactiva está en Swagger UI (solo perfil `dev`).
+### Inicio
 
-## 14. Hoja de ruta (fases)
+El Inicio tiene dos pestañas. A la derecha de las pestañas se muestra tu **saldo disponible** (la suma de tus cuentas con saldo, sin contar deudas).
 
-1. **Andamiaje**: Maven + Angular + PrimeNG + Tailwind + i18n + layout, perfiles dev/prod, Flyway V1, proxy dev, Spotless/ESLint/Prettier.
-2. **Auth + admin** + paginado/filtros genéricos y tabla *lazy* sincronizada con la URL.
-3. **Cuentas + crédito**.
-4. **Motor de transacciones backend** + `docs/transaction-cases.json`.
-5. **Editor de lotes frontend** + listado de transacciones.
-6. **Programadas**.
-7. **Home – Resumen**.
-8. **Home – Calendario**.
-9. **Docker prod-local** y verificación end-to-end.
+**Resumen**
 
-La especificación detallada de cada punto está en [`docs/PROMPT-accountant-v2.md`](docs/PROMPT-accountant-v2.md).
+![Inicio, pestaña Resumen](docs/images/02-inicio-resumen.png)
+
+- **Estado de resultados:** barras de ingresos y gastos y línea del neto por año, mes, semana o día. Con los botones puedes moverte entre periodos, volver a hoy, ampliar o reducir cuántos periodos ves y cambiar a vista de tabla.
+- **Gastos por concepto:** dona con los gastos del mes elegido, agrupados por concepto de consumo (y "Comisiones"), con el color de cada cuenta.
+- **Cuentas en uso:** tarjetas de las cuentas activas con saldo e incluidas en el balance, con el total disponible y la deuda. Las tarjetas de crédito muestran su uso, el crédito disponible y sus fechas de corte y pago. Al hacer clic se abre el detalle de la cuenta.
+- **Resumen de cuentas:** tus cuentas agrupadas con su total y el porcentaje que representan; muestra aparte el disponible, la deuda y el patrimonio neto.
+
+**Calendario**
+
+![Inicio, pestaña Calendario](docs/images/03-inicio-calendario.png)
+
+- **Calendario del mes** (la semana empieza en lunes): ingresos en verde y gastos en rojo por día, fechas de corte y pago de tus tarjetas y las próximas transacciones programadas (con borde punteado). Al hacer clic en un día se abre el detalle: transacciones aplicadas ese día, eventos de tarjetas y programadas.
+- **Meta de ahorro anual:** cuánto quieres ahorrar (neto) en el año y cómo vas. Muestra las metas que has registrado (las 3 más recientes), con una barra de avance, el estado del año y el estado de cada mes. Se define o edita con **Definir meta** o con el lápiz; la meta del año actual se puede eliminar, la de un año que ya terminó no.
+
+En modo claro el Inicio se ve así:
+
+![Inicio en modo claro](docs/images/14-inicio-modo-claro.png)
+
+### Cuentas
+
+**Listado:** filtra por nombre, tipo y estado, ordena por columna y pagina. Los filtros se guardan en la dirección de la página, así que puedes recargar o compartir la vista. **Nueva cuenta** abre el formulario.
+
+![Listado de cuentas](docs/images/04-cuentas-listado.png)
+
+**Detalle:** datos de la cuenta, línea de crédito (si tiene), sub-cuentas y últimas transacciones.
+
+![Detalle de cuenta](docs/images/05-cuenta-detalle.png)
+
+- **Ir a [cuenta padre]** te lleva a la cuenta de la que cuelga; **Editar** y **Eliminar** están junto a él (al eliminar regresas a la cuenta padre, o al listado si no tiene).
+- **Sub-cuentas:** primero las cuentas por pagar, luego las por cobrar y después las demás. Todo el renglón abre la sub-cuenta y las deshabilitadas se marcan en rojo. **Agregar sub-cuenta** abre "Nueva cuenta" con esta cuenta ya elegida como padre.
+- **Últimas transacciones:** las 10 más recientes con el efecto en esta cuenta y su saldo antes → después. Las pendientes tienen el botón **Aplicar**. **Ver todas** abre el listado de transacciones filtrado por esta cuenta.
+
+**Formulario (nueva / editar):** nombre, tipo, cuenta padre, moneda, estado, saldo, ícono, color (selector o código hexadecimal), incluir en el balance, cuenta temporal y, para cuentas por pagar, la línea de crédito.
+
+![Formulario de cuenta](docs/images/07-cuenta-formulario.png)
+
+### Transacciones
+
+**Listado:** todas tus transacciones guardadas, con filtros por descripción, tipo, cuenta, estado (aplicadas / pendientes) y fechas. Las pendientes tienen el botón **Aplicar**. **Nuevo lote** abre el editor.
+
+![Listado de transacciones](docs/images/08-transacciones-listado.png)
+
+**Nuevo lote (editor):**
+
+![Editor de lotes](docs/images/09-lote-editor.png)
+
+- **Programadas aplicables:** las programadas que vencen hoy o mañana. **Aplicar** llena el formulario con sus datos (el tipo y las cuentas quedan fijos).
+- **Formulario:** tipo, origen, destino, monto, comisión, fecha, descripción y "Pendiente" (solo en los tipos que lo permiten). La descripción se genera sola hasta que la escribes tú. El botón junto al monto copia el saldo disponible del origen.
+- **Vista previa:** debajo del formulario ves el saldo de cada cuenta antes → después de la transacción (y el crédito disponible en tarjetas). Si algo no es válido se muestra el motivo.
+- **Agregar** suma la transacción al lote y limpia el formulario para la siguiente.
+- **Tabla del lote:** las transacciones en orden de fecha con sus saldos antes → después y su tipo de operación. Puedes editarlas o eliminarlas; todo el lote se recalcula.
+- El borrador se guarda en tu navegador: si recargas la página no se pierde. Si mientras tanto cambió el saldo de alguna cuenta, el sistema te avisa y recalcula.
+- **Vaciar** descarta el borrador.
+
+**Revisar:** abre el resumen del lote antes de guardar: ingresos, gastos y neto, número de transacciones y pendientes, avisos (cuentas temporales que se deshabilitarán, pendientes) y cada cuenta afectada con su saldo actual → proyectado. **Guardar lote** guarda todo de una vez; si algo falla no se guarda nada y se indica qué transacción falló.
+
+![Resumen del lote](docs/images/10-lote-revision.png)
+
+### Programadas
+
+**Listado:** tus transacciones recurrentes con su recurrencia, próxima ejecución y estado. Desde cada renglón puedes **editar**, **saltar** la próxima ejecución, **activar / desactivar** o **eliminar**.
+
+![Listado de programadas](docs/images/11-programadas-listado.png)
+
+**Formulario:** tipo, cuentas, monto, comisión y descripción (con las mismas reglas que una transacción), la **recurrencia** ("día del mes", "último día" o avanzada, con las próximas fechas) y, opcionalmente, la próxima ejecución.
+
+![Formulario de programada](docs/images/12-programada-formulario.png)
+
+### Administración (solo administrador)
+
+- **Usuarios:** listado de usuarios con filtros; permite cambiar el nombre y habilitar o deshabilitar usuarios. Solo puede haber un administrador.
+- **Monedas:** catálogo de monedas disponibles para las cuentas (agregar, editar, habilitar o deshabilitar).
+
+![Administración de usuarios](docs/images/13-admin-usuarios.png)
+
+![Administración de monedas](docs/images/15-admin-monedas.png)
+
+## 7. Tareas frecuentes
+
+### Agregar una cuenta
+
+1. **Cuentas → Nueva cuenta** (o la tarjeta "Nueva cuenta" del Inicio, o **Agregar sub-cuenta** desde el detalle de su cuenta padre).
+2. Captura el **nombre** y el **tipo**; elige la **cuenta padre** si va dentro de otra.
+3. Elige **moneda**, **ícono** y **color**.
+4. Si el tipo tiene saldo, captura el **saldo inicial**.
+5. Marca **Incluir en el balance** si debe sumar en el Inicio, y **Cuenta temporal** si es una inversión o negocio que se cerrará con su retiro.
+6. Si es una tarjeta o préstamo, activa **Tiene línea de crédito** y captura el límite, el día de corte y el día de pago.
+7. **Guardar.**
+
+### Registrar movimientos
+
+1. **Transacciones → Nuevo lote.**
+2. Para cada movimiento: elige el tipo, las cuentas, el monto (y la comisión si aplica) y la fecha; revisa la vista previa y presiona **Agregar**.
+3. Si una programada está por vencer, usa **Aplicar** en el panel de programadas aplicables.
+4. Presiona **Revisar**, verifica los totales y las cuentas afectadas, y **Guardar lote**.
+
+### Aplicar un movimiento pendiente
+
+Cuando el movimiento se refleje en tu banco, presiona **Aplicar** en el listado de transacciones (filtra por "Pendientes") o en "Últimas transacciones" del detalle de la cuenta.
+
+### Programar un pago recurrente
+
+1. **Programadas → Nueva programada.**
+2. Captura tipo, cuentas, monto y descripción, y elige la recurrencia (por ejemplo, "día 5 de cada mes").
+3. **Guardar.** Cuando venza aparecerá en el panel de programadas aplicables del editor de lotes y en el calendario.
+
+### Definir la meta de ahorro
+
+En **Inicio → Calendario**, presiona **Definir meta** y captura cuánto quieres ahorrar en el año (ingresos menos gastos). La meta mensual es una doceava parte; cada mes se marca en verde si la alcanzó, en naranja si quedó por debajo y en rojo si el neto fue negativo.
+
+### Corregir un saldo
+
+Si el saldo de una cuenta no coincide con el real, edita la cuenta y cambia el **Saldo**. El ajuste se aplica directamente, sin generar transacción.
+
+## 8. Mensajes de error frecuentes
+
+| Mensaje | Qué pasó |
+|---|---|
+| Fondos insuficientes | La cuenta origen no tiene saldo para el movimiento. |
+| Se excede el límite de crédito | La deuda de la tarjeta superaría su límite. |
+| El monto excede el saldo | Intentas pagar más de lo que debes o cobrar más de lo que te deben. |
+| La fecha es anterior a la última transacción guardada | Las cuentas ya tienen movimientos posteriores; usa una fecha igual o posterior. |
+| La cuenta está deshabilitada | La cuenta no está activa (por ejemplo, una inversión temporal ya cerrada). Reactívala desde su formulario. |
+| No se puede eliminar la cuenta | Tiene saldo distinto de 0 o sub-cuentas. |
+| Los datos cambiaron mientras se guardaban | Otra operación modificó alguna cuenta del lote; el editor recalcula con los saldos nuevos para que revises y guardes de nuevo. |

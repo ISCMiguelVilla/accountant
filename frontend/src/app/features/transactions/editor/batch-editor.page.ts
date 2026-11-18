@@ -46,7 +46,7 @@ interface BatchRow {
   failed: boolean;
 }
 
-/** Batch editor (PROMPT 5.6): capture locally, review the summary, save atomically. */
+/** Batch editor (docs/documentacion-tecnica.md §11.4): capture locally, review the summary, save atomically. */
 @Component({
   selector: 'app-batch-editor-page',
   imports: [
@@ -310,7 +310,7 @@ export class BatchEditorPage {
   private readonly schedules = signal<Schedule[]>([]);
   private readonly form = viewChild.required(TransactionFormComponent);
 
-  /** Applicable schedules not included in the draft yet (PROMPT 5.6.11). */
+  /** Applicable schedules not included in the draft yet (docs/documentacion-tecnica.md §11.4). */
   protected readonly applicable = computed(() => {
     const used = new Set(this.store.transactions().map((item) => item.scheduleId));
     return this.schedules().filter((schedule) => !used.has(schedule.id));

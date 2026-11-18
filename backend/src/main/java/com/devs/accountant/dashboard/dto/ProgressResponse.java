@@ -5,7 +5,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 /**
- * Yearly savings progress (PROMPT 6.1.4). Without a goal, {@code target}, {@code expected}, {@code percentage} and
+ * Yearly savings progress (docs/documentacion-tecnica.md §10). Without a goal, {@code target}, {@code expected}, {@code percentage} and
  * the statuses are null. Months after the current one have a null status.
  */
 public record ProgressResponse(

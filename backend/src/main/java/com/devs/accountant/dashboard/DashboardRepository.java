@@ -12,7 +12,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 /**
- * Report queries in Postgres. Every amount follows PROMPT 5.3: income = ADDITION {@code amount − fee}; expense =
+ * Report queries in Postgres. Every amount follows docs/documentacion-tecnica.md §9.5: income = ADDITION {@code amount − fee}; expense =
  * SUBTRACTION {@code amount + fee} plus the {@code fee} of NEUTER. Only applied transactions, by {@code applied_at}.
  */
 @Repository

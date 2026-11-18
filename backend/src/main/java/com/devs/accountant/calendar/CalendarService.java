@@ -28,7 +28,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Home "Calendar" tab (PROMPT 6.2). */
+/** Home "Calendar" tab (docs/documentacion-tecnica.md §10). */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)

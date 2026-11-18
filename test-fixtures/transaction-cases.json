@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "description": "Shared test cases of the transaction engine (backend Java and frontend TypeScript), PROMPT draft 6. Amounts are strings with 2 decimals. Defaults: account status ACTIVE, temporary false, creditLimit null; transaction fee 0.00, applied true, operationDate 2026-10-01T12:00:00, destination null. Each case expects either 'expected' (accounts and transactions to check, matched by id / uuid; transactions listed in application order; optional 'report' = income / expense / net of the applied transactions: ADDITION counts amount − fee, SUBTRACTION amount + fee, NEUTER only its fee as expense) or 'error' (first failing transaction; field/fieldCode only for VALIDATION_ERROR).",
+  "description": "Shared test cases of the transaction engine (backend Java and frontend TypeScript). Amounts are strings with 2 decimals. Defaults: account status ACTIVE, temporary false, creditLimit null; transaction fee 0.00, applied true, operationDate 2026-10-01T12:00:00, destination null. Each case expects either 'expected' (accounts and transactions to check, matched by id / uuid; transactions listed in application order; optional 'report' = income / expense / net of the applied transactions: ADDITION counts amount − fee, SUBTRACTION amount + fee, NEUTER only its fee as expense) or 'error' (first failing transaction; field/fieldCode only for VALIDATION_ERROR).",
   "cases": [
     {
       "name": "INCOME credits amount minus fee; income = amount − fee",

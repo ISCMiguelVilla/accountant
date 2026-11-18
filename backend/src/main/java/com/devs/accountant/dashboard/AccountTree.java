@@ -14,7 +14,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Builds the summary tree of the home (PROMPT 6.1): total = own balance + children totals, nodes with balance and
+ * Builds the summary tree of the home (docs/documentacion-tecnica.md §10): total = own balance + children totals, nodes with balance and
  * total 0 are removed, a node left with a single leaf child is collapsed into "parent › child", and each node gets its
  * share of the parent total.
  */

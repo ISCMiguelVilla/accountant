@@ -63,7 +63,7 @@ export interface Preview {
 }
 
 /**
- * Local batch draft (PROMPT 5.6): persisted per user in localStorage and recomputed from scratch on
+ * Local batch draft (docs/documentacion-tecnica.md §11.4): persisted per user in localStorage and recomputed from scratch on
  * every change, from the pristine accounts of `GET /accounts/options`. A change that would make a
  * valid batch fail is rejected and the draft stays as it was.
  */

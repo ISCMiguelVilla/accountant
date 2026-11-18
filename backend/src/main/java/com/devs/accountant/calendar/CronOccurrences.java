@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.springframework.scheduling.support.CronExpression;
 
-/** Expands crons into the dates of a calendar range (PROMPT 6.2). */
+/** Expands crons into the dates of a calendar range (docs/documentacion-tecnica.md §10). */
 public final class CronOccurrences {
 
     /** Guard against crons that fire many times a day (every minute, every hour). */
